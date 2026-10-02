@@ -3,17 +3,9 @@ using System.Numerics;
 
 namespace Pac_Man
 {
-    public enum CellType
-    {
-        Wall,
-        Path,
-        Pellet,
-        PowerPellet
-    }
-
     public class Maze
     {
-        private static readonly string[] Sprite =
+        public string[] Sprite =
         {
             "############################",
             "#............##............#",
@@ -38,7 +30,7 @@ namespace Pac_Man
             "#............##............#",
             "#.####.#####.##.#####.####.#",
             "#.####.#####.##.#####.####.#",
-            "#o..##................##..o#",
+            "#o..##........-.......##..o#",
             "###.##.##.########.##.##.###",
             "###.##.##.########.##.##.###",
             "#......##....##....##......#",
@@ -58,6 +50,7 @@ namespace Pac_Man
         public List<Cell> Walls {get; set;} = new List<Cell>();
         public List<Cell> Pellets {get; set;}= new List<Cell>();
         public List<Cell> PowerPellets {get; set;}= new List<Cell>();
+        public List<Cell> Road {get; set;}= new List<Cell>();
 
         public void Draw()
         {
@@ -135,7 +128,14 @@ namespace Pac_Man
                 for (int c = 0; c < cols; c++)
                 {
                     char cell = Sprite[r][c];
-                    if (cell == '-') continue;
+                    if (cell == '-')
+                    {
+                        int x0 = (int)MathF.Floor(c * pixel);
+                        int y0 = (int)MathF.Floor(offsetY + r * pixel);
+                        int x1 = (int)MathF.Floor((c + 1) * pixel);
+                        int y1 = (int)MathF.Floor(offsetY + (r + 1) * pixel);
+                        AddRoad(x0, y0, x1 - x0, y1 - y0);
+                    }
                     if (cell == '/') continue;
 
                     if (cell == '#')
@@ -155,6 +155,7 @@ namespace Pac_Man
                         int y1 = (int)MathF.Floor(offsetY + (r + 1) * pixel);
 
                         this.AddPellet(x0, y0, x1 - x0, y1 - y0);
+                        AddRoad(x0, y0, x1 - x0, y1 - y0);
                     }
                     if (cell == 'o')
                     {
@@ -164,6 +165,7 @@ namespace Pac_Man
                         int y1 = (int)MathF.Floor(offsetY + (r + 1) * pixel);
 
                         this.AddPowerPellet(x0, y0, x1 - x0, y1 - y0);
+                        AddRoad(x0, y0, x1 - x0, y1 - y0);
                     }
                 }
             }
@@ -173,6 +175,12 @@ namespace Pac_Man
         {
             Cell newWall = new Cell(x, y, width, height, CellType.Wall);
             this.Walls.Add(newWall);
+        }
+
+        public void AddRoad(float x, float y, float width, float height)
+        {
+            Cell newWall = new Cell(x, y, width, height, CellType.Path);
+            this.Road.Add(newWall);
         }
 
         public void AddPellet(float x, float y, float width, float height)

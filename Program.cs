@@ -6,7 +6,7 @@ public class Program
 
     public static void Main(string[] args)
     {
-        Game game = new Game(600, 800, "Pac-Man", 60);
+        Game game = new Game(800, 1000, "Pac-Man", 60);
         game.Run();
     }
 }
