@@ -7,7 +7,7 @@ namespace Pac_Man
     {
         public Player(float speed, float screenWidth, float screenHeight, int cols, int rows)
         {
-            Pixel = MathF.Min(screenWidth / (cols+10), screenHeight/(rows+10));
+            Pixel = MathF.Min(screenWidth / cols, screenHeight/rows);
             float offsetY = (screenHeight - Pixel * rows) / 2f;
             int x0 = (int)MathF.Floor(14 * Pixel);
             int y0 = (int)MathF.Floor(offsetY + 23 * Pixel);
@@ -21,15 +21,11 @@ namespace Pac_Man
         public float Speed { get; set; }
         public PlayerDirection Direction { get; set; } = PlayerDirection.Lefth;
         public PlayerDirection BloquedDirection { get; set; } = PlayerDirection.None;
-        //public bool UpBloqued { get; set; }
-        //public bool DownBloqued { get; set; }
-        //public bool LeftBloqued { get; set; }
-        //public bool RightBloqued { get; set; }
 
         public void Draw()
         {
-            Raylib.DrawRectangleV(new Vector2(Bounds.X, Bounds.Y), new Vector2(Bounds.Width, Bounds.Height), Color.Green);
-            Raylib.DrawCircleV(new Vector2(Bounds.X+(Bounds.Width/2), Bounds.Y+(Bounds.Height/2)), Pixel/2, Color.Red);
+            //Raylib.DrawRectangleV(new Vector2(Bounds.X, Bounds.Y), new Vector2(Bounds.Width, Bounds.Height), Color.Green);
+            Raylib.DrawCircleV(new Vector2(Bounds.X+(Bounds.Width/2), Bounds.Y+(Bounds.Height/2)), (Pixel/2)-2, Color.Red);
         }
 
         public void SetPositionX(float position)

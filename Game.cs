@@ -78,13 +78,13 @@ namespace Pac_Man
             {
                 movement -= Player.Speed * Raylib.GetFrameTime();
                 newX = Player.Bounds.X + movement;
-                    Player.SetPositionX(newX);
+                Player.SetPositionX(newX);
             }
             if (Player.Direction == PlayerDirection.Right && Player.BloquedDirection != PlayerDirection.Right)
             {
                 movement += Player.Speed * Raylib.GetFrameTime();
                 newX = Player.Bounds.X + movement;
-                    Player.SetPositionX(newX);
+                Player.SetPositionX(newX);
             }
             if (Player.Direction == PlayerDirection.Up && Player.BloquedDirection != PlayerDirection.Up)
             {
@@ -146,6 +146,5 @@ namespace Pac_Man
                 }
             }
         }
-        
     }
 }
