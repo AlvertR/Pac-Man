@@ -19,12 +19,12 @@ namespace Pac_Man
         public Rectangle Bounds { get; set; }
         public float Pixel { get; set; }
         public float Speed { get; set; }
-        public PlayerDirection Direction { get; set; } = PlayerDirection.Right;
+        public PlayerDirection Direction { get; set; } = PlayerDirection.Lefth;
         public PlayerDirection DesiredDirection { get; set; } = PlayerDirection.None;
 
         public void Draw()
         {
-            //Raylib.DrawRectangleV(new Vector2(Bounds.X, Bounds.Y), new Vector2(Bounds.Width, Bounds.Height), Color.Green);
+            Raylib.DrawRectangleV(new Vector2(Bounds.X, Bounds.Y), new Vector2(Bounds.Width, Bounds.Height), Color.Green);
             Raylib.DrawCircleV(new Vector2(Bounds.X+(Bounds.Width/2), Bounds.Y+(Bounds.Height/2)), (Pixel/2), Color.Red);
         }
 
@@ -40,34 +40,16 @@ namespace Pac_Man
             this.Bounds = newRecY;
         }
 
-        public void PlayerUp()
-        {
-            DesiredDirection = PlayerDirection.Up;
-        }
-
-        public void PlayerDown()
-        {
-            DesiredDirection = PlayerDirection.Down;
-        }
-
-        public void PlayerLefth()
-        {
-            DesiredDirection = PlayerDirection.Lefth;
-        }
-
-        public void PlayerRight()
-            => DesiredDirection = PlayerDirection.Right;
-
         public void HandleInput()
         {
             if (Raylib.IsKeyPressed(KeyboardKey.Up))
-                PlayerUp();
+                DesiredDirection = PlayerDirection.Up;
             if (Raylib.IsKeyPressed(KeyboardKey.Down))
-                PlayerDown();
+                DesiredDirection = PlayerDirection.Down;
             if (Raylib.IsKeyPressed(KeyboardKey.Left))
-                PlayerLefth();
+                DesiredDirection = PlayerDirection.Lefth;
             if (Raylib.IsKeyPressed(KeyboardKey.Right))
-                PlayerRight();
+                DesiredDirection = PlayerDirection.Right;
         }
     }
 }
