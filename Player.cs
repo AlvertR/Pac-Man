@@ -19,13 +19,13 @@ namespace Pac_Man
         public Rectangle Bounds { get; set; }
         public float Pixel { get; set; }
         public float Speed { get; set; }
-        public PlayerDirection Direction { get; set; } = PlayerDirection.Lefth;
-        public PlayerDirection BloquedDirection { get; set; } = PlayerDirection.None;
+        public PlayerDirection Direction { get; set; } = PlayerDirection.Right;
+        public PlayerDirection DesiredDirection { get; set; } = PlayerDirection.None;
 
         public void Draw()
         {
             //Raylib.DrawRectangleV(new Vector2(Bounds.X, Bounds.Y), new Vector2(Bounds.Width, Bounds.Height), Color.Green);
-            Raylib.DrawCircleV(new Vector2(Bounds.X+(Bounds.Width/2), Bounds.Y+(Bounds.Height/2)), (Pixel/2)-2, Color.Red);
+            Raylib.DrawCircleV(new Vector2(Bounds.X+(Bounds.Width/2), Bounds.Y+(Bounds.Height/2)), (Pixel/2), Color.Red);
         }
 
         public void SetPositionX(float position)
@@ -41,25 +41,22 @@ namespace Pac_Man
         }
 
         public void PlayerUp()
-        { 
-            Direction = PlayerDirection.Up;
-            BloquedDirection = PlayerDirection.None;
+        {
+            DesiredDirection = PlayerDirection.Up;
         }
 
         public void PlayerDown()
-        { 
-            Direction = PlayerDirection.Down;
-            BloquedDirection = PlayerDirection.None;
+        {
+            DesiredDirection = PlayerDirection.Down;
         }
 
         public void PlayerLefth()
-        { 
-            Direction = PlayerDirection.Lefth;
-            BloquedDirection = PlayerDirection.None;
+        {
+            DesiredDirection = PlayerDirection.Lefth;
         }
 
         public void PlayerRight()
-            => Direction = PlayerDirection.Right;
+            => DesiredDirection = PlayerDirection.Right;
 
         public void HandleInput()
         {

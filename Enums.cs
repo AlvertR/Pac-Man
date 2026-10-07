@@ -5,7 +5,10 @@
         Wall,
         Path,
         Pellet,
-        PowerPellet
+        PowerPellet,
+        Door,
+        Brich,
+        Player,
     }
 
     public enum PlayerDirection
