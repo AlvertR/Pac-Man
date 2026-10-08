@@ -1,5 +1,4 @@
 ﻿using Raylib_cs;
-using System.Numerics;
 
 namespace Pac_Man
 {
@@ -11,6 +10,8 @@ namespace Pac_Man
             HeightWindow = height;
             NameWindow = name;
             FPS = fps;
+            Maze = new Maze(WidthWindow, HeightWindow);
+            Player = new Player(100, WidthWindow, HeightWindow, Maze.Sprite[0].Length, Maze.Sprite.Length);
         }
         public int HeightWindow { get; private set; }
         public int WidthWindow { get; private set; }
@@ -34,13 +35,11 @@ namespace Pac_Man
 
             Raylib.SetTargetFPS(this.FPS);
 
-            Maze = new Maze(WidthWindow, HeightWindow);
             Maze.SetCells();
-            Player = new Player(100, WidthWindow, HeightWindow, Maze.Sprite[0].Length, Maze.Sprite.Length);
 
             while (!Raylib.WindowShouldClose())
             {
-                this.DeltaTime = Raylib.GetFrameTime();
+                this.DeltaTime = MathF.Min(Raylib.GetFrameTime(), 1f/30f);
                 HandleInput();
                 Update();
                 Draw();
@@ -71,47 +70,63 @@ namespace Pac_Man
 
         public void MovementPlayer()
         {
-            float movement = 0;
-            float newY = 0;
-            float newX = 0;
-            if (Player.Direction == PlayerDirection.Lefth && Check(PlayerDirection.Lefth))
+            if (Player.Direction == PlayerDirection.Left)
             {
-                movement -= Player.Speed * Raylib.GetFrameTime();
-                newX = Player.Bounds.X + movement;
-                Player.SetPositionX(newX);
+                if (Check(PlayerDirection.Left))
+                    Player.SetPositionX(Player.Bounds.X - Player.Speed * DeltaTime);
+                else
+                    Player.SetPositionX(Player.MazeCol * Player.Pixel);
             }
-            if (Player.Direction == PlayerDirection.Right && Check(PlayerDirection.Right))
+            if (Player.Direction == PlayerDirection.Right)
             {
-                movement += Player.Speed * Raylib.GetFrameTime();
-                newX = Player.Bounds.X + movement;
-                Player.SetPositionX(newX);
+                if(Check(PlayerDirection.Right))
+                    Player.SetPositionX(Player.Bounds.X + Player.Speed * DeltaTime);
+                else
+                    Player.SetPositionX(Player.MazeCol * Player.Pixel);
             }
-            if (Player.Direction == PlayerDirection.Up && Check(PlayerDirection.Up))
+            if (Player.Direction == PlayerDirection.Up)
             {
-                movement -= Player.Speed * Raylib.GetFrameTime();
-                newY = Player.Bounds.Y + movement;
-                Player.SetPositionY(newY);
+                if (Check(PlayerDirection.Up))
+                    Player.SetPositionY(Player.Bounds.Y - Player.Speed * DeltaTime);
+                else
+                    Player.SetPositionY(Player.OffsetY + Player.MazeRow * Player.Pixel);
             }
-            if (Player.Direction == PlayerDirection.Down && Check(PlayerDirection.Down))
+            if (Player.Direction == PlayerDirection.Down)
             {
-                movement += Player.Speed * Raylib.GetFrameTime();
-                newY = Player.Bounds.Y + movement;
-                Player.SetPositionY(newY);
+                if(Check(PlayerDirection.Down))
+                    Player.SetPositionY(Player.Bounds.Y + Player.Speed * DeltaTime);
+                else
+                    Player.SetPositionY(Player.OffsetY + Player.MazeRow * Player.Pixel);
             }
         }
 
         public void UpdateDirection()
         {
             bool update = false;
-            if (Player.Direction == PlayerDirection.Up && (Player.Bounds.Y + Player.Bounds.Height <= ((Player.MazeRow + 2) * Player.Pixel) + Player.Pixel))
+            float step = Player.Speed * DeltaTime;
+            bool centerX = MathF.Abs(Player.Bounds.X - Player.MazeCol * Player.Pixel) <= step;
+            bool centerY = MathF.Abs(Player.Bounds.Y - (Player.OffsetY + Player.MazeRow * Player.Pixel)) <= step;
+
+            bool isReverse = (Player.Direction == PlayerDirection.Left && Player.DesiredDirection == PlayerDirection.Right)
+               || (Player.Direction == PlayerDirection.Right && Player.DesiredDirection == PlayerDirection.Left)
+               || (Player.Direction == PlayerDirection.Up && Player.DesiredDirection == PlayerDirection.Down)
+               || (Player.Direction == PlayerDirection.Down && Player.DesiredDirection == PlayerDirection.Up);
+
+            if (isReverse)
+            {
+                Player.Direction = Player.DesiredDirection;
+                return;
+            }
+
+            if (Player.Direction == PlayerDirection.Up && centerY)
                 update = true;
-            if(Player.Direction == PlayerDirection.Lefth && (Player.Bounds.X + Player.Bounds.Width <= (Player.MazeCol * Player.Pixel) + Player.Pixel))
+            if(Player.Direction == PlayerDirection.Left && centerX)
                 update = true;
-            if(Player.Direction == PlayerDirection.Right && (Player.Bounds.X >= Player.MazeCol * Player.Pixel))
+            if(Player.Direction == PlayerDirection.Right && centerX)
                 update = true;
-            if (Player.Direction == PlayerDirection.Down && (Player.Bounds.Y >= Player.MazeRow * Player.Pixel ))
+            if (Player.Direction == PlayerDirection.Down && centerY)
                 update = true;
-            if(Player.Direction == PlayerDirection.Lefth && !Check(PlayerDirection.Lefth))
+            if(Player.Direction == PlayerDirection.Left && !Check(PlayerDirection.Left))
                 update = true;
             if (Player.Direction == PlayerDirection.Right&& !Check(PlayerDirection.Right))
                 update = true;
@@ -120,34 +135,49 @@ namespace Pac_Man
             if (Player.Direction == PlayerDirection.Down && !Check(PlayerDirection.Down))
                 update = true;
 
+
             if (update)
             {
                 if (Player.DesiredDirection == PlayerDirection.Up && Check(PlayerDirection.Up))
+                {
                     Player.Direction = PlayerDirection.Up;
-                if (Player.DesiredDirection == PlayerDirection.Down && Check(PlayerDirection.Down))
+                    Player.SetPositionX(Player.MazeCol * Player.Pixel);
+                }
+                if (Player.DesiredDirection == PlayerDirection.Down && Check(PlayerDirection.Down)) 
+                { 
                     Player.Direction = PlayerDirection.Down;
-                if (Player.DesiredDirection == PlayerDirection.Lefth && Check(PlayerDirection.Lefth))
-                    Player.Direction = PlayerDirection.Lefth;
+                    Player.SetPositionX(Player.MazeCol * Player.Pixel);
+                }
+                if (Player.DesiredDirection == PlayerDirection.Left && Check(PlayerDirection.Left))
+                {
+                    Player.Direction = PlayerDirection.Left;
+                    Player.SetPositionY(Player.OffsetY + Player.MazeRow * Player.Pixel);
+                }
                 if (Player.DesiredDirection == PlayerDirection.Right && Check(PlayerDirection.Right))
+                {
                     Player.Direction = PlayerDirection.Right;
+                    Player.SetPositionY(Player.OffsetY + Player.MazeRow * Player.Pixel);
+                }
             }
         }
 
         public void UpdateColRow()
         {
+            float x = Player.Bounds.X / Player.Pixel;
+            float y = (Player.Bounds.Y - Player.OffsetY) / Player.Pixel;
             switch (Player.Direction)
             {
-                case PlayerDirection.Lefth:
-                    Player.MazeCol = (int)((Player.Bounds.X + Player.Bounds.Width) / Player.Pixel);
+                case PlayerDirection.Left:
+                    Player.MazeCol = (int)Math.Ceiling(x);
                     break;
                 case PlayerDirection.Right:
-                    Player.MazeCol = (int)((Player.Bounds.X + Player.Bounds.Width) / Player.Pixel) - 1;
+                    Player.MazeCol = (int)Math.Floor(x);
                     break;
                 case PlayerDirection.Up:
-                    Player.MazeRow = (int)((Player.Bounds.Y ) / Player.Pixel) - 1;
+                    Player.MazeRow = (int)MathF.Ceiling(y);
                     break;
                 case PlayerDirection.Down:
-                    Player.MazeRow = (int)((Player.Bounds.Y - Player.Bounds.Height) / Player.Pixel) - 1;
+                    Player.MazeRow = (int)MathF.Floor(y);
                     break;
             }
         }
@@ -157,7 +187,7 @@ namespace Pac_Man
             bool canPass = false;
             switch (direction)
             {
-                case PlayerDirection.Lefth:
+                case PlayerDirection.Left:
                     canPass = Maze.CanMove(Player.MazeRow, Player.MazeCol-1);
                     break;
                 case PlayerDirection.Right:

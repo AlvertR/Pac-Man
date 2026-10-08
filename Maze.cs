@@ -47,11 +47,7 @@ namespace Pac_Man
 
         public float Width {get; set;}
         public float Height {get; set;}
-        //public List<Cell> Walls {get; set;} = new List<Cell>();
-        //public List<Cell> Pellets {get; set;}= new List<Cell>();
-        //public List<Cell> PowerPellets {get; set;}= new List<Cell>();
-        //public List<Cell> Road {get; set;}= new List<Cell>();
-        public CellType[,] Cells {get; set;}
+        public CellType[,]? Cells {get; set;}
 
         public void Draw()
         {
@@ -71,24 +67,15 @@ namespace Pac_Man
                     if (cell == '-') continue;
                     if (cell == '0') continue;
                     if (cell == 'p') continue;
-                    //{
-                    //    int x0 = (int)MathF.Floor(c * pixel);
-                    //    int y0 = (int)MathF.Floor(offsetY + r * pixel);
-                    //    int x1 = (int)MathF.Floor((c + 1) * pixel);
-                    //    int y1 = (int)MathF.Floor(offsetY + (r + 1) * pixel);
-                    //    Raylib.DrawRectangleV(new Vector2(x0, y0), new Vector2(x1-x0, y1-y0), Color.Green);
-                    //}
 
                     if (cell == '#')
                     {
-                        //Color color = Color.Blue;
                         int x0 = (int)MathF.Floor(c * pixel);
                         int y0 = (int)MathF.Floor(offsetY + r * pixel);
                         int x1 = (int)MathF.Floor((c +1) * pixel);
                         int y1 = (int)MathF.Floor(offsetY + ( r +1) * pixel);
 
                         Raylib.DrawRectangleV(new Vector2(x0, y0), new Vector2(x1-x0, y1-y0), Color.Blue);
-                        //Raylib.DrawRectangleV(new Vector2(x0 + (pixel / 3), y0 + (pixel / 3)), new Vector2(pixel/2, pixel / 2), Color.Blue);
                     }
                     if (cell == '/')
                     {
@@ -137,7 +124,7 @@ namespace Pac_Man
                     if (cell == '/')
                         Cells[r, c] = CellType.Door;
                     if (cell == '0')
-                        Cells[r, c] = CellType.Brich;
+                        Cells[r, c] = CellType.Bridge;
                     if (cell == '#')
                         Cells[r, c] = CellType.Wall;
                     if (cell == '.')
@@ -152,7 +139,6 @@ namespace Pac_Man
 
         public bool CanMove(int row, int col)
         {
-
             if(row < 0 || row >= Cells.GetLength(0))
                 return false;
 

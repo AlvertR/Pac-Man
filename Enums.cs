@@ -7,7 +7,7 @@
         Pellet,
         PowerPellet,
         Door,
-        Brich,
+        Bridge,
         Player,
     }
 
@@ -15,7 +15,7 @@
     {
         Up,
         Down,
-        Lefth,
+        Left,
         Right,
         None,
     }
