@@ -65,7 +65,8 @@ namespace Pac_Man
             MovementPlayer();
             //UpdateDirection(); arreglar esto para que actualice a la mitad no inmediatamente
             //if (Player.Bounds.X >= (Player.Pixel / 2) + Player.Bounds.Width)
-            //    UpdateDirection();
+            UpdateColRow();
+            UpdateDirection();
         }
 
         public void HandleInput()
@@ -85,12 +86,15 @@ namespace Pac_Man
                 Player.SetPositionX(newX);
                 ChangePixelPlayer += Math.Abs(movement);
                 //if(ChangePixelPlayer >= Player.Pixel/3 && ChangePixelPlayer <= (Player.Pixel/3) * 2)
-                //if (Player.Bounds.X >= (Player.Pixel / 2) + Player.Bounds.Width)
+                //if (Player.Bounds.X <= PlayerMazeCol * Player.Pixel - (Player.Pixel / 2))
+                //{
+                //    //Console.WriteLine("plyX " + Player.Bounds.X + " calculo " + (PlayerMazeCol * Player.Pixel - (Player.Pixel / 2)));
                 //    UpdateDirection();
+                //}
                 if (ChangePixelPlayer >= Player.Pixel)
                 {
-                    Maze.Cells[PlayerMazeRow, PlayerMazeCol] = CellType.Path;
-                    PlayerMazeCol--;
+                    //Maze.Cells[PlayerMazeRow, PlayerMazeCol] = CellType.Path;
+                    //PlayerMazeCol--;
                     ChangePixelPlayer -= Player.Pixel;
                 }
             }
@@ -100,12 +104,15 @@ namespace Pac_Man
                 newX = Player.Bounds.X + movement;
                 Player.SetPositionX(newX);
                 ChangePixelPlayer += Math.Abs(movement);
-                //if (ChangePixelPlayer >= (Player.Pixel / 2) + Player.Bounds.Width)
+                //if (Player.Bounds.X + Player.Bounds.Width >= PlayerMazeCol * Player.Pixel + (Player.Pixel / 2))
+                //{
+                //    Console.WriteLine("plyX " + (Player.Bounds.X + Player.Bounds.Width) + " calculo " + (PlayerMazeCol * Player.Pixel + (Player.Pixel / 2)));
                 //    UpdateDirection();
+                //}
                 if (ChangePixelPlayer >= Player.Pixel)
                 {
-                    Maze.Cells[PlayerMazeRow, PlayerMazeCol] = CellType.Path;
-                    PlayerMazeCol++;
+                    //Maze.Cells[PlayerMazeRow, PlayerMazeCol] = CellType.Path;
+                    //PlayerMazeCol++;
                     ChangePixelPlayer -= Player.Pixel;
                 }
             }
@@ -118,7 +125,7 @@ namespace Pac_Man
                 if (ChangePixelPlayer >= Player.Pixel)
                 {
                     Maze.Cells[PlayerMazeRow, PlayerMazeCol] = CellType.Path;
-                    PlayerMazeRow--;
+                    //PlayerMazeRow--;
                     ChangePixelPlayer -= Player.Pixel;
                 }
             }
@@ -131,7 +138,7 @@ namespace Pac_Man
                 if (ChangePixelPlayer >= Player.Pixel)
                 {
                     Maze.Cells[PlayerMazeRow, PlayerMazeCol] = CellType.Path;
-                    PlayerMazeRow++;
+                    //PlayerMazeRow++;
                     ChangePixelPlayer -= Player.Pixel;
                 }
             }
@@ -147,6 +154,29 @@ namespace Pac_Man
                 Player.Direction = PlayerDirection.Lefth;
             if (Player.DesiredDirection == PlayerDirection.Right && Check(PlayerDirection.Right))
                 Player.Direction = PlayerDirection.Right;
+        }
+
+        public void UpdateColRow()
+        {
+            switch (Player.Direction)
+            {
+                case PlayerDirection.Lefth:
+                    PlayerMazeCol = (int)((Player.Bounds.X + Player.Bounds.Width) / Player.Pixel);
+                    break;
+                case PlayerDirection.Right:
+                    PlayerMazeCol = (int)((Player.Bounds.X + Player.Bounds.Width) / Player.Pixel) - 1;
+                    break;
+                case PlayerDirection.Up:
+                    PlayerMazeRow = (int)((Player.Bounds.Y ) / Player.Pixel) - 1;
+                    break;
+                case PlayerDirection.Down:
+                    PlayerMazeRow = (int)((Player.Bounds.Y - Player.Bounds.Height) / Player.Pixel) - 1;
+                    break;
+            }
+            //int col = (int)(Player.Bounds.X / Player.Pixel) -1;
+            //int row = (int)(Player.Bounds.Y / Player.Pixel) -1;
+            //PlayerMazeCol = col;
+            //PlayerMazeRow = row;
         }
 
         public bool Check(PlayerDirection direction)
@@ -175,6 +205,7 @@ namespace Pac_Man
                     canPass = Maze.CanMove(PlayerMazeRow+1, PlayerMazeCol);
                     break;
             }
+            Console.WriteLine("dir " + direction.ToString() + " move " + canPass.ToString() + " r " + PlayerMazeRow + " c " + PlayerMazeCol);
             return canPass;
         }
 
