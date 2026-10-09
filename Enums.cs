@@ -8,7 +8,6 @@
         PowerPellet,
         Door,
         Bridge,
-        Player,
     }
 
     public enum PlayerDirection
