@@ -5,78 +5,53 @@ namespace Pac_Man
 {
     public class Maze
     {
-        public Maze(Sprite sprite)
+        public Maze(Board board)
         {
-            Sprite = sprite;
-            Cells = new CellType[Sprite.Rows, Sprite.Cols];
+            Board = board;
+            Cells = new CellType[Board.Rows, Board.Cols];
             SetCells();
         }
 
         public CellType[,] Cells {get; set;}
-        public Sprite Sprite {get; set;}
+        public Board Board {get; set;}
+
 
         public void Draw()
         {
-            int rows = Sprite.Rows;
-            int cols = Sprite.Cols;
+            int rows = Cells.GetLength(0);
+            int cols = Cells.GetLength(1);
             
             for (int r = 0; r < rows; r++)
             {
                 for (int c = 0; c < cols; c++)
                 {
-                    char cell = Sprite.Grid[r][c];
-                    if (cell == '-' 
-                        || cell == '0' 
-                        || cell == 'p' 
-                        || cell == 'b' 
-                        || cell == 'i' 
-                        || cell == 'r' 
-                        || cell == 'c') continue;
-
-                    if (cell == '#')
+                    CellType cell = Cells[r,c];
+                    switch (cell)
                     {
-                        int x0 = (int)MathF.Floor(c * Sprite.Pixel);
-                        int y0 = (int)MathF.Floor(Sprite.OffsetY + r * Sprite.Pixel);
-                        int x1 = (int)MathF.Floor((c +1) * Sprite.Pixel);
-                        int y1 = (int)MathF.Floor(Sprite.OffsetY + ( r +1) * Sprite.Pixel);
-
-                        Raylib.DrawRectangleV(new Vector2(x0, y0), new Vector2(x1-x0, y1-y0), Color.Blue);
-                    }
-                    if (cell == '/')
-                    {
-                        Color color = Color.Pink;
-                        int x0 = (int)MathF.Floor(c * Sprite.Pixel);
-                        int y0 = (int)MathF.Floor(Sprite.OffsetY + r * Sprite.Pixel);
-                        int x1 = (int)MathF.Floor((c + 1) * Sprite.Pixel);
-                        int y1 = (int)MathF.Floor(Sprite.OffsetY + (r + 1) * Sprite.Pixel);
-
-                        Raylib.DrawRectangleV(new Vector2(x0, y0), new Vector2(x1-x0, y1-y0), color);
-                    }
-                    if (cell == '.')
-                    {
-                        CellType currentPellet = Cells[r, c];
-                        if (currentPellet == CellType.Pellet)
-                        {
-                            Color color = Color.Yellow;
-                            float rad = Sprite.Pixel / 5;
-                            float x0 = MathF.Floor(c * Sprite.Pixel) + Sprite.Pixel / 2;
-                            float y0 = MathF.Floor(Sprite.OffsetY + r * Sprite.Pixel) + Sprite.Pixel / 2;
-
-                            Raylib.DrawCircleV(new Vector2(x0, y0), rad, color);
-                        }
-                    }
-                    if (cell == 'o')
-                    {
-                        CellType currentPellet = Cells[r, c];
-                        if (currentPellet == CellType.PowerPellet)
-                        {
-                            Color color = Color.Yellow;
-                            float rad = Sprite.Pixel / 3;
-                            float x0 = MathF.Floor(c * Sprite.Pixel) + Sprite.Pixel / 2;
-                            float y0 = MathF.Floor(Sprite.OffsetY + r * Sprite.Pixel) + Sprite.Pixel / 2;
-
-                            Raylib.DrawCircleV(new Vector2(x0, y0), rad, color);
-                        }
+                        case CellType.Wall:
+                            int x0 = (int)MathF.Floor(Board.OffsetX + c * Board.Pixel);
+                            int y0 = (int)MathF.Floor(Board.OffsetY + r * Board.Pixel);
+                            int x1 = (int)MathF.Floor(Board.OffsetX + (c + 1) * Board.Pixel);
+                            int y1 = (int)MathF.Floor(Board.OffsetY + (r + 1) * Board.Pixel);
+                            Raylib.DrawRectangleV(new Vector2(x0, y0), new Vector2(x1 - x0, y1 - y0), Color.Blue);
+                            break;
+                        case CellType.Pellet:
+                                float radP = Board.Pixel / 5;
+                                float x0P = MathF.Floor(Board.OffsetX + c * Board.Pixel) + Board.Pixel / 2;
+                                float y0P = MathF.Floor(Board.OffsetY + r * Board.Pixel) + Board.Pixel / 2;
+                                Raylib.DrawCircleV(new Vector2(x0P, y0P), radP, Color.Yellow);
+                            break;
+                        case CellType.PowerPellet:
+                            float radPp = Board.Pixel / 3;
+                            float x0Pp = MathF.Floor(Board.OffsetX + c * Board.Pixel) + Board.Pixel / 2;
+                            float y0Pp = MathF.Floor(Board.OffsetY + r * Board.Pixel) + Board.Pixel / 2;
+                            Raylib.DrawCircleV(new Vector2(x0Pp, y0Pp), radPp, Color.Yellow);
+                            break;
+                        case CellType.Door:
+                        case CellType.Path:
+                        case CellType.Bridge:
+                        default:
+                            continue;
                     }
                 }
             }
@@ -84,46 +59,63 @@ namespace Pac_Man
 
         public void SetCells()
         {
-            int rows = Sprite.Rows;
-            int cols = Sprite.Cols;
+            int rows = Board.Rows;
+            int cols = Board.Cols;
             for (int r = 0; r < rows; r++)
             {
                 for (int c = 0; c < cols; c++)
                 {
-                    char cell = Sprite.Grid[r][c];
-                    if (cell == '-')
-                        Cells[r, c] = CellType.Path;
-                    if (cell == '/')
-                        Cells[r, c] = CellType.Door;
-                    if (cell == '0')
-                        Cells[r, c] = CellType.Bridge;
-                    if (cell == '#')
-                        Cells[r, c] = CellType.Wall;
-                    if (cell == '.' || cell == 'b' || cell == 'p')
-                        Cells[r, c] = CellType.Pellet;
-                    if (cell == 'o')
-                        Cells[r, c] = CellType.PowerPellet;
-                    if (cell == 'i' || cell == 'r' || cell == 'c')
-                        Cells[r, c] = CellType.Path;
+                    char cell = Board.Grid[r][c];
+                    switch (cell)
+                    {
+                        case '-':
+                            Cells[r, c] = CellType.Path;
+                            break;
+                        case '/':
+                            Cells[r, c] = CellType.Door;
+                            break;
+                        case '0':
+                            Cells[r, c] = CellType.Bridge;
+                            break;
+                        case '#':
+                            Cells[r, c] = CellType.Wall;
+                            break;
+                        case '.':
+                        case 'p':
+                            Cells[r, c] = CellType.Pellet;
+                            break;
+                        case 'o':
+                            Cells[r, c] = CellType.PowerPellet;
+                            break;
+                        case 'b':
+                        case 'i':
+                        case 'r':
+                        case 'c':
+                        default:
+                            Cells[r, c] = CellType.Path;
+                            break;
+                    }
                 }
             }
         }
 
-        public bool CanMove(int row, int col)
+        public bool CanMove(int row, int col, bool canUseDoor)
         {
-            if(row < 0 || row >= Cells.GetLength(0))
+            if (row < 0 || row >= Cells.GetLength(0))
                 return false;
-
             if (col < 0 || col >= Cells.GetLength(1))
                 return false;
 
-            return Cells[row, col] != CellType.Wall && Cells[row, col] != CellType.Door;
+            if (!canUseDoor)
+                return Cells[row, col] != CellType.Wall && Cells[row, col] != CellType.Door;
+            else
+                return Cells[row, col] != CellType.Wall;
         }
     }
 
-    public class Sprite
+    public class Board
     {
-        public Sprite(float screenWidth, float screenHeight) 
+        public Board(float screenWidth, float screenHeight) 
         {
             Rows = Grid.Length;
             Cols = Grid[0].Length;

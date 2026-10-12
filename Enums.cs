@@ -10,7 +10,7 @@
         Bridge,
     }
 
-    public enum PlayerDirection
+    public enum Direction
     {
         Up,
         Down,

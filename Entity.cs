@@ -7,11 +7,11 @@ namespace Pac_Man
     {
         public Rectangle Bounds { get; set; }
         public float Speed { get; set; }
-        public PlayerDirection Direction { get; set; }
+        public Direction Direction { get; set; }
         public int MazeCol { get; set; }
         public int MazeRow { get; set; }
         public float DeltaTime { get; set; } = 0f;
-        public Sprite Sprite { get; set; }
+        public Board Board { get; set; }
 
         public void SetDeltaTime(float deltaTime)
             => DeltaTime = deltaTime;
@@ -33,76 +33,80 @@ namespace Pac_Man
 
         public void UpdateColRow()
         {
-            float x = Bounds.X / Sprite.Pixel;
-            float y = (Bounds.Y - Sprite.OffsetY) / Sprite.Pixel;
+            float x = (Bounds.X - Board.OffsetX) / Board.Pixel;
+            float y = (Bounds.Y - Board.OffsetY) / Board.Pixel;
             const float eps = 0.001f;
             switch (Direction)
             {
-                case PlayerDirection.Left:
+                case Direction.Left:
                     MazeCol = (int)MathF.Ceiling(x - eps);
                     break;
-                case PlayerDirection.Right:
+                case Direction.Right:
                     MazeCol = (int)MathF.Floor(x + eps);
                     break;
-                case PlayerDirection.Up:
+                case Direction.Up:
                     MazeRow = (int)MathF.Ceiling(y - eps);
                     break;
-                case PlayerDirection.Down:
+                case Direction.Down:
                     MazeRow = (int)MathF.Floor(y + eps);
                     break;
             }
         }
 
-        public bool Check(PlayerDirection direction, Maze maze)
+        public bool Check(Direction direction, Maze maze, bool canUseDoor)
         {
             bool canPass = false;
             switch (direction)
             {
-                case PlayerDirection.Left:
-                    canPass = maze.CanMove(MazeRow, MazeCol - 1);
+                case Direction.Left:
+                    canPass = maze.CanMove(MazeRow, MazeCol - 1, canUseDoor);
                     break;
-                case PlayerDirection.Right:
-                    canPass = maze.CanMove(MazeRow, MazeCol + 1);
+                case Direction.Right:
+                    canPass = maze.CanMove(MazeRow, MazeCol + 1, canUseDoor);
                     break;
-                case PlayerDirection.Up:
-                    canPass = maze.CanMove(MazeRow - 1, MazeCol);
+                case Direction.Up:
+                    canPass = maze.CanMove(MazeRow - 1, MazeCol, canUseDoor);
                     break;
-                case PlayerDirection.Down:
-                    canPass = maze.CanMove(MazeRow + 1, MazeCol);
+                case Direction.Down:
+                    canPass = maze.CanMove(MazeRow + 1, MazeCol, canUseDoor);
                     break;
             }
             return canPass;
         }
 
-        public void Move(Maze maze)
+        public void Move(Maze maze, bool canUseDoor)
         {
-            if (Direction == PlayerDirection.Left)
+            if (Direction == Direction.Left)
             {
-                if (Check(PlayerDirection.Left, maze))
+                if (maze.Cells[MazeRow, MazeCol] == CellType.Bridge && MazeCol <=0)
+                    SetPositionX(Board.OffsetX + (maze.Cells.GetLength(1)-1) * Board.Pixel);
+                else if (Check(Direction.Left, maze, canUseDoor))
                     SetPositionX(Bounds.X - Speed * DeltaTime);
                 else
-                    SetPositionX(MazeCol * Sprite.Pixel);
+                    SetPositionX(Board.OffsetX + MazeCol * Board.Pixel);
             }
-            if (Direction == PlayerDirection.Right)
+            if (Direction == Direction.Right)
             {
-                if (Check(PlayerDirection.Right, maze))
+                if (maze.Cells[MazeRow, MazeCol] == CellType.Bridge && MazeCol >= maze.Cells.GetLength(1)-1)
+                    SetPositionX(Board.OffsetX);
+                else if (Check(Direction.Right, maze, canUseDoor))
                     SetPositionX(Bounds.X + Speed * DeltaTime);
                 else
-                    SetPositionX(MazeCol * Sprite.Pixel);
+                    SetPositionX(Board.OffsetX + MazeCol * Board.Pixel);
             }
-            if (Direction == PlayerDirection.Up)
+            if (Direction == Direction.Up)
             {
-                if (Check(PlayerDirection.Up, maze))
+                if (Check(Direction.Up, maze, canUseDoor))
                     SetPositionY(Bounds.Y - Speed * DeltaTime);
                 else
-                    SetPositionY(Sprite.OffsetY + MazeRow * Sprite.Pixel);
+                    SetPositionY(Board.OffsetY + MazeRow * Board.Pixel);
             }
-            if (Direction == PlayerDirection.Down)
+            if (Direction == Direction.Down)
             {
-                if (Check(PlayerDirection.Down, maze))
+                if (Check(Direction.Down, maze, canUseDoor))
                     SetPositionY(Bounds.Y + Speed * DeltaTime);
                 else
-                    SetPositionY(Sprite.OffsetY + MazeRow * Sprite.Pixel);
+                    SetPositionY(Board.OffsetY + MazeRow * Board.Pixel);
             }
         }
     }

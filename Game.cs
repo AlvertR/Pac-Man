@@ -10,20 +10,20 @@ namespace Pac_Man
             HeightWindow = height;
             NameWindow = name;
             FPS = fps;
-            Sprite = new Sprite(WidthWindow, HeightWindow);
-            Maze = new Maze(Sprite);
-            Player = new Player(100, Sprite);
-            Ink = new Ghost(100, Color.SkyBlue, 14,11, Sprite);
+            Board = new Board(WidthWindow, HeightWindow);
+            Maze = new Maze(Board);
+            Player = new Player(100, Board);
+            Blinky = new Blinky(100, Board);
         }
         public int HeightWindow { get; private set; }
         public int WidthWindow { get; private set; }
         public string NameWindow { get; private set; } = string.Empty;
         public int FPS { get; set; }
         public float DeltaTime { get; set; } = 0;
-        public Sprite Sprite { get; set; }
+        public Board Board { get; set; }
         public Maze Maze { get; set; }
         public Player Player { get; set; }
-        public Ghost Ink { get; set; }
+        public Blinky Blinky { get; set; }
 
         public void Run()
         {
@@ -52,10 +52,10 @@ namespace Pac_Man
         {
             Raylib.BeginDrawing();
             Raylib.ClearBackground(Color.Black);
-            Raylib.DrawText("Puntuacion: " + Player.Points.ToString(), 0, 0, 24, Color.White);
             Maze.Draw();
+            Raylib.DrawText("Puntuacion: " + Player.Points.ToString(), 0, 0, 24, Color.White);
             Player.Draw();
-            Ink.Draw();
+            Blinky.Draw();
             Raylib.EndDrawing();
         }
 
@@ -63,8 +63,8 @@ namespace Pac_Man
         {
             Player.SetDeltaTime(this.DeltaTime);
             MovementPlayer();
-            Ink.SetDeltaTime(this.DeltaTime);
-            MoveInky();
+            Blinky.SetDeltaTime(this.DeltaTime);
+            MoveBlinky();
         }
 
         public void HandleInput()
@@ -74,17 +74,17 @@ namespace Pac_Man
 
         public void MovementPlayer()
         {
-            Player.Move(Maze);
+            Player.Move(Maze, false);
             Player.UpdateColRow();
             Player.UpdateDirection(Maze);
             Player.UpdatePoints(Maze);
         }
 
-        public void MoveInky()
+        public void MoveBlinky()
         {
-            Ink.Move(Maze);
-            Ink.UpdateColRow();
-            Ink.UpdateDirection(Maze);
+            Blinky.Move(Maze, true);
+            Blinky.UpdateColRow();
+            Blinky.UpdateDirection(Maze);
         }
     }
 }

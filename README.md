@@ -1,85 +1,64 @@
 ﻿# Pac-Man
-
 Bugs
 
-  1. GetInitialPosition devuelve la última coincidencia, no la primera (Maze.cs:177-194)
-  El break solo sale del for de columnas; el de filas sigue corriendo. Con 'p' no se nota porque hay una sola, pero con 'g' (que aparece 4 veces) devolvería la fila 15, no la 11. Además, si no encuentra el carácter devuelve [0,0], que es una pared. Te
-  conviene usar return dentro del loop y lanzar una excepción si no lo encuentra.
+  1. El túnel no suma OffsetX (Entity.cs:83 y Entity.cs:94). SetPositionX(Board.Pixel * (Cols-1)) y SetPositionX(0) ignoran el offset. Con 800×1000 vale 0 y no se nota, pero si cambias el tamaño
+     de la ventana el jugador aparecerá fuera del laberinto. Deberían ser Board.OffsetX + (Cols-1) * Board.Pixel y Board.OffsetX.
+  2. Blinky se mete un poco en la pared al rebotar (Blinky.cs:31-43). Como cambia de dirección en UpdateDirection, Move no alcanza a ajustarlo a la celda. Avanza hasta un paso dentro de la pared
+     y luego regresa. Además, revisa izquierda y derecha sin importar hacia dónde va. Al decidir la dirección, ajusta también la X a la celda (SetPositionX(OffsetX + MazeCol * Pixel)).
+  3. GetInitialPosition devuelve [0,0] si no encuentra el carácter (Maze.cs:186). Esa celda es una pared, así que un error en el Grid no avisa: la entidad simplemente aparece en la esquina. Mejor
+     lanza una excepción.
+  4. SetCells convierte cualquier carácter desconocido en Path (Maze.cs:94). Es el mismo problema de antes, solo que ahora sale un hueco en vez de una pared invisible. Deja 'b','i','r','c' como
+     Path y que el default lance una excepción.
+  5. El jugador y Blinky son del mismo color. Los dos son Color.Red (Player.cs:28 y Blinky.cs:20). Pac-Man debería ser amarillo.
+  6. La puerta de la casa no se dibuja (Maze.cs:50). La casa se ve abierta. Normalmente se dibuja como una línea rosa delgada.
 
-  2. El túnel ('0' / Bridge) no funciona (Maze.cs:111-120)
-  CanMove permite pasar por Bridge, pero si el jugador sigue hacia la izquierda desde la columna 0, CanMove(14, -1) devuelve false y el jugador se queda pegado. Falta que salga por el otro lado (columna -1 → Cols-1). Cuando lo agregues, revisa también
-  Maze.Cells[Player.MazeRow, Player.MazeCol] en Game.cs:104, porque ahí se puede salir del rango.
+  Mejoras de diseño
 
-  3. Cualquier carácter desconocido se convierte en pared (Enums.cs:5, Maze.cs:82-109)
-  Wall es el valor 0 del enum, así que cualquier celda que SetCells no mapea se queda como Wall. Por ejemplo, si escribes mal un carácter en el Grid, no hay error: simplemente aparece una pared invisible. Con un switch que tenga un default: throw lo
-  detectarías enseguida.
+  1. Mover la creación de Bounds a Entity. Player y Blinky repiten el mismo bloque de x0/y0/x1/y1. Un constructor protected Entity(char key, float speed, Board board) quitaría la duplicación y
+     también el aviso CS8618. Así cada fantasma nuevo sería una línea.
+  2. Sacar un helper CellX(col) / CellY(row). La expresión Board.OffsetX + MazeCol * Board.Pixel se repite unas 12 veces entre Entity, Player, Blinky y Maze. Ponla en Board.
+  3. Hacer Entity abstracta. El Draw base dibuja un cuadro negro que nadie usa. También puedes subir UpdateDirection como método abstracto: así Game puede recorrer una lista List<Entity> en lugar
+     de tener MovementPlayer y MoveBlinky por separado.
+  4. Pasar dt como parámetro de Move. Hoy usas SetDeltaTime y una propiedad DeltaTime. Pasarlo directo es más simple y no puedes olvidar actualizarlo.
+  5. Hacer que la lógica de giro sirva también para los fantasmas. Player.UpdateDirection ya resuelve "girar solo cuando estoy centrado en la celda". Los fantasmas necesitan lo mismo. Si lo subes
+     a Entity (algo como TryTurn(Direction, maze, canUseDoor)), la IA solo tiene que elegir la dirección.
 
-  4. Bounds con Floor sigue pendiente, y ahora también está en Ghost (Player.cs:13-17, Ghost.cs:12-16)
-  Es el punto #6 de tu README. El ancho queda en 28 o 29 en vez de 28.57, y la posición inicial (Y = 714) no coincide con la que luego usan los snaps (OffsetY + MazeRow * Pixel = 714.28). El fantasma copió el mismo patrón.
+  Lo que falta para terminar
 
-  5. OffsetX se calcula pero nunca se usa (Maze.cs:131)
-  Con 800×1000 vale 0 y no pasa nada. Pero si cambias el tamaño de la ventana para que sobre espacio a los lados, el laberinto quedará pegado a la izquierda mientras que en vertical sí se centra.
+  En orden aproximado:
 
-  El fantasma
 
-  - Se dibuja bien: (14, 11) es la 'g' arriba de la puerta, y el semicírculo de 180→360 queda arriba. Con segments = 1, raylib calcula los segmentos solo, así que no hay problema.
-  - La posición está fija en el código (Game.cs:16). Sería mejor usar GetInitialPosition('g'), ya corregido.
-  - Detalle: el fantasma se llama "Inky", no "Ink".
+  1. IA de los fantasmas. En cada intersección, el fantasma elige la casilla vecina más cercana a un objetivo, y no puede dar media vuelta. El objetivo cambia según el fantasma:
+     - Blinky: la casilla del jugador.
+     - Pinky ('r'): 4 casillas delante del jugador.
+     - Inky ('i'): un vector calculado desde Blinky.
+     - Clyde ('c'): persigue al jugador, pero si está a menos de 8 casillas se va a su esquina.
+  2. Salida de la casa. Pinky, Inky y Clyde salen por la puerta con un temporizador. Una vez fuera, ya no deben poder volver a entrar (solo cuando se los comen).
+  3. Colisión jugador–fantasma, comparando celdas o con CheckCollisionRecs.
+  4. Vidas y reinicio de posiciones cuando un fantasma te atrapa.
+  En orden aproximado:
 
-  Mejoras de diseño (importan antes de mover al fantasma)
+  1. IA de los fantasmas. En cada intersección, el fantasma elige la casilla vecina más cercana a un objetivo, y no puede dar media vuelta. El objetivo
+     cambia según el fantasma:
+     - Blinky: la casilla del jugador.
+     - Pinky ('r'): 4 casillas delante del jugador.
+     - Inky ('i'): un vector calculado desde Blinky.
+     - Clyde ('c'): persigue al jugador, pero si está a menos de 8 casillas se va a su esquina.
+  2. Salida de la casa. Pinky, Inky y Clyde salen por la puerta con un temporizador. Una vez fuera, ya no deben poder volver a entrar (solo cuando se los
+     comen).
+  3. Colisión jugador–fantasma, comparando celdas o con CheckCollisionRecs.
 
-  1. La lógica de movimiento está amarrada a Player. Check, UpdateColRow, UpdateDirection y MovementPlayer en Game usan Player directamente. Para que el fantasma se mueva tendrías que duplicar todo eso. Te sugiero crear una clase base (por ejemplo
-     Entity/Actor) con Bounds, Speed, Direction, MazeRow/Col, SetPositionX/Y y el movimiento por celdas. Player y Ghost heredarían de ella, y solo cambiaría cómo deciden la dirección: el jugador con el teclado, el fantasma con su IA. Hoy Ghost y Player ya
-     repiten casi el mismo código.
-  2. PlayerDirection → Direction, porque el fantasma también lo usa.
-  Pixel = 714.28). El fantasma copió el mismo patrón.
+  1. IA de los fantasmas. En cada intersección, el fantasma elige la casilla vecina más cercana a un objetivo, y no puede dar media vuelta. El objetivo cambia según el fantasma:
+     - Blinky: la casilla del jugador.
+     - Pinky ('r'): 4 casillas delante del jugador.
+     - Inky ('i'): un vector calculado desde Blinky.
+     - Clyde ('c'): persigue al jugador, pero si está a menos de 8 casillas se va a su esquina.
+  2. Salida de la casa. Pinky, Inky y Clyde salen por la puerta con un temporizador. Una vez fuera, ya no deben poder volver a entrar (solo cuando se los comen).
+  3. Colisión jugador–fantasma, comparando celdas o con CheckCollisionRecs.
+  4. Vidas y reinicio de posiciones cuando un fantasma te atrapa.
+  5. Modo asustado con el power pellet: los fantasmas se ponen azules y huyen, puedes comértelos (200, 400, 800, 1600 puntos) y regresan a la casa como ojos.
+  6. Alternancia Scatter/Chase por tiempo: cada fantasma va a su esquina un rato y luego persigue.
+  7. Condición de victoria: cuando no queden pellets, pasas al siguiente nivel.
+  8. Estados del juego: Ready / Playing / Muerte / Game Over / Victoria, para no mezclarlos con ifs dentro de Update.
 
-  5. OffsetX se calcula pero nunca se usa (Maze.cs:131)
-  Con 800×1000 vale 0 y no pasa nada. Pero si cambias el tamaño de la ventana para que
-  sobre espacio a los lados, el laberinto quedará pegado a la izquierda mientras que en
-  vertical sí se centra.
-
-  El fantasma
-
-  - Se dibuja bien: (14, 11) es la 'g' arriba de la puerta, y el semicírculo de 180→360
-    queda arriba. Con segments = 1, raylib calcula los segmentos solo, así que no hay
-    problema.
-  - La posición está fija en el código (Game.cs:16). Sería mejor usar
-    GetInitialPosition('g'), ya corregido.
-  - Detalle: el fantasma se llama "Inky", no "Ink".
-
-  Mejoras de diseño (importan antes de mover al fantasma)
-
-  1. La lógica de movimiento está amarrada a Player. Check, UpdateColRow,
-     UpdateDirection y MovementPlayer en Game usan Player directamente. Para que el
-     fantasma se mueva tendrías que duplicar todo eso. Te sugiero crear una clase base
-     (por ejemplo Entity/Actor) con Bounds, Speed, Direction, MazeRow/Col,
-     SetPositionX/Y y el movimiento por celdas. Player y Ghost heredarían de ella, y
-     solo cambiaría cómo deciden la dirección: el jugador con el teclado, el fantasma
-     con su IA. Hoy Ghost y Player ya repiten casi el mismo código.
-  2. PlayerDirection → Direction, porque el fantasma también lo usa.
-  3. CanMove bloquea la puerta para todos. Los fantasmas necesitan cruzarla para salir
-     de la casa, así que conviene algo como CanMove(row, col, bool canUseDoor).
-  4. Maze.Draw lee Sprite.Grid (los caracteres) en vez de Cells. Así tienes el mapeo de
-     caracteres en dos lugares. Sería mejor que Draw haga un switch sobre Cells[r, c].
-     Lo mismo para las celdas que se repiten en el cálculo de x0/y0/x1/y1: puedes
-     sacarlo a un helper CellRect(r, c).
-  5. El nombre Sprite confunde. No es un sprite, es el layout y las medidas del tablero.
-     Algo como Board o Layout sería más claro.
-
-  Detalles menores
-  3. CanMove bloquea la puerta para todos. Los fantasmas necesitan cruzarla para salir de la casa, así que conviene algo como CanMove(row, col, bool canUseDoor).
-  4. Maze.Draw lee Sprite.Grid (los caracteres) en vez de Cells. Así tienes el mapeo de caracteres en dos lugares. Sería mejor que Draw haga un switch sobre Cells[r, c]. Lo mismo para las celdas que se repiten en el cálculo de x0/y0/x1/y1: puedes sacarlo
-     a un helper CellRect(r, c).
-  5. El nombre Sprite confunde. No es un sprite, es el layout y las medidas del tablero. Algo como Board o Layout sería más claro.
-
-  Detalles menores
-
-  - Player.Points es float; debería ser int.
-  - CellType.Player no se usa.
-  - Hay un typo: GetPlayerInitailPos → GetPlayerInitialPos.
-  - El constructor vacío de Program sobra.
-  - Los pellets se comen con un frame de retraso, porque MovementPlayer usa el MazeRow/Col del frame anterior. No se nota, pero conviene saberlo.
-  - Falta: colisión jugador–fantasma, condición de victoria (contar pellets restantes), vidas y el modo asustado con el power pellet.
-  - El README.md son notas de una revisión anterior. Los puntos 1, 2 y el SetCells en el constructor ya están aplicados; los números de línea ya no coinciden; y el punto de Game.cs:129-136 ya no aplica. Ahí solo queda vigente el #6 (el Floor de Bounds,
-    que es el bug 4 de arriba).
+  Lo que más te conviene ahora es el punto 1 de diseño (constructor en Entity) y el punto 5 (giro reutilizable). Con eso, los otros tres fantasmas y la IA salen casi solos.
