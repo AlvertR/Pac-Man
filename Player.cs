@@ -5,25 +5,16 @@ namespace Pac_Man
 {
     public class Player : Entity
     {
-        public Player(float speed, Board board)
+        public Player(char key, float speed, Board board)
+            : base(key, speed, board)
         {
-            Board = board;
-            var spritePos = Board.GetPlayerInitialPos();
-            MazeRow = spritePos[0];
-            MazeCol = spritePos[1];
-            float x0 = Board.OffsetX + MazeCol * Board.Pixel;
-            float y0 = Board.OffsetY + MazeRow * Board.Pixel;
-            float x1 = Board.OffsetX + (MazeCol+1) * Board.Pixel;
-            float y1 = Board.OffsetY + (MazeRow+1) * Board.Pixel;
-            Bounds = new Rectangle(x0, y0, x1 - x0, y1 - y0);
-            Speed = speed;
             Points = 0;
             Direction = Direction.Left;
         }
         public Direction DesiredDirection { get; set; } = Direction.None;
         public int Points {  get; set; }
 
-        public override void Draw()
+        public void Draw()
         {
             //Raylib.DrawCircleV(new Vector2(Bounds.X+(Bounds.Width/2), Bounds.Y+(Bounds.Height/2)), (Board.Pixel/2), Color.Yellow);
             if (Direction == Direction.Left)
@@ -70,10 +61,10 @@ namespace Pac_Man
             }
         }
 
-        public void UpdateDirection(Maze maze)
+        public void UpdateDirection(Maze maze, float deltaTime)
         {
             bool update = false;
-            float step = Speed * DeltaTime;
+            float step = Speed * deltaTime;
             bool centerX = MathF.Abs(Bounds.X - (Board.OffsetX + MazeCol * Board.Pixel)) <= step;
             bool centerY = MathF.Abs(Bounds.Y - (Board.OffsetY + MazeRow * Board.Pixel)) <= step;
 

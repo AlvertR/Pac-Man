@@ -1,28 +1,59 @@
 ﻿# Pac-Man
-Bugs
 
-  1. El túnel no suma OffsetX (Entity.cs:83 y Entity.cs:94). SetPositionX(Board.Pixel * (Cols-1)) y SetPositionX(0) ignoran el offset. Con 800×1000 vale 0 y no se nota, pero si cambias el tamaño
-     de la ventana el jugador aparecerá fuera del laberinto. Deberían ser Board.OffsetX + (Cols-1) * Board.Pixel y Board.OffsetX.
-  2. Blinky se mete un poco en la pared al rebotar (Blinky.cs:31-43). Como cambia de dirección en UpdateDirection, Move no alcanza a ajustarlo a la celda. Avanza hasta un paso dentro de la pared
-     y luego regresa. Además, revisa izquierda y derecha sin importar hacia dónde va. Al decidir la dirección, ajusta también la X a la celda (SetPositionX(OffsetX + MazeCol * Pixel)).
-  3. GetInitialPosition devuelve [0,0] si no encuentra el carácter (Maze.cs:186). Esa celda es una pared, así que un error en el Grid no avisa: la entidad simplemente aparece en la esquina. Mejor
-     lanza una excepción.
-  4. SetCells convierte cualquier carácter desconocido en Path (Maze.cs:94). Es el mismo problema de antes, solo que ahora sale un hueco en vez de una pared invisible. Deja 'b','i','r','c' como
-     Path y que el default lance una excepción.
-  5. El jugador y Blinky son del mismo color. Los dos son Color.Red (Player.cs:28 y Blinky.cs:20). Pac-Man debería ser amarillo.
-  6. La puerta de la casa no se dibuja (Maze.cs:50). La casa se ve abierta. Normalmente se dibuja como una línea rosa delgada.
+Problemas que afectan directamente la IA
 
-  Mejoras de diseño
+  1. El fantasma no sabe cuándo está centrado en una casilla
+  La lógica de "estoy alineado con la casilla y puedo girar" solo existe en Player.UpdateDirection (Player.cs:67-69, centerX/centerY). Ahora el fantasma cambia de dirección en cualquier punto, y
+  eso funciona porque solo va de izquierda a derecha. Cuando empiece a girar en las intersecciones, si gira a media casilla se va a desalinear y a rozar las paredes. Ese cálculo debería poder
+  usarlo cualquier Entity, no solo el jugador.
 
-  1. Mover la creación de Bounds a Entity. Player y Blinky repiten el mismo bloque de x0/y0/x1/y1. Un constructor protected Entity(char key, float speed, Board board) quitaría la duplicación y
-     también el aviso CS8618. Así cada fantasma nuevo sería una línea.
-  2. Sacar un helper CellX(col) / CellY(row). La expresión Board.OffsetX + MazeCol * Board.Pixel se repite unas 12 veces entre Entity, Player, Blinky y Maze. Ponla en Board.
-  3. Hacer Entity abstracta. El Draw base dibuja un cuadro negro que nadie usa. También puedes subir UpdateDirection como método abstracto: así Game puede recorrer una lista List<Entity> en lugar
-     de tener MovementPlayer y MoveBlinky por separado.
-  4. Pasar dt como parámetro de Move. Hoy usas SetDeltaTime y una propiedad DeltaTime. Pasarlo directo es más simple y no puedes olvidar actualizarlo.
-  5. Hacer que la lógica de giro sirva también para los fantasmas. Player.UpdateDirection ya resuelve "girar solo cuando estoy centrado en la celda". Los fantasmas necesitan lo mismo. Si lo subes
-     a Entity (algo como TryTurn(Direction, maze, canUseDoor)), la IA solo tiene que elegir la dirección.
+  2. La puerta siempre está abierta para los fantasmas
+  BaseMove llama a Move(maze, true, ...) siempre (Ghost.cs:65). Blinky empieza en (11,14), justo encima de la puerta (12,13-14). Si el jugador está más abajo, la IA va a decidir que "abajo" lo
+  acerca y Blinky se va a meter a la casa. La puerta solo debería poder cruzarse al salir (y después, al regresar cuando se lo coman).
 
+  3. Algunos giros no alinean la posición
+  LeaveRoom cambia a Up y luego a InitialDirection sin ajustar el eje perpendicular (Ghost.cs:43-50). Además, UpdateColRow solo actualiza el eje de la dirección actual (Entity.cs:44). El jugador
+  sí se alinea al girar con SetPositionX/SetPositionY. El fantasma necesita lo mismo, porque toda la IA depende de que MazeRow/MazeCol sean exactos.
+
+  Detalle menor: Ghost.cs todavía no está agregado en git (sale como ??). Acuérdate de agregarlo al hacer commit.
+
+  ---
+
+  Cómo funciona Blinky
+
+  Blinky no "busca un camino" hacia Pac-Man. No usa BFS ni A*: es una decisión voraz (greedy) que toma en cada casilla.
+
+  1. Casilla objetivo (target): en modo persecución, el objetivo de Blinky es la casilla donde está Pac-Man en ese momento. Eso es lo único que lo distingue de los demás fantasmas, porque cada
+     uno calcula su objetivo de otra forma.
+  2. Cuándo decide: solo cuando llega al centro de una casilla, y una sola vez por casilla. Si decide en cada frame mientras está "casi centrado", puede cambiar de opinión varias veces y quedarse
+     vibrando. Te conviene recordar en qué casilla tomó la última decisión.
+  3. Qué opciones tiene: revisa las 4 direcciones y descarta:
+     - las que tienen pared (o la puerta, si ya salió);
+     - la dirección contraria a la que lleva. Los fantasmas originales nunca se dan la vuelta por su cuenta. Esto es lo que hace que su movimiento se vea natural y no tiemble.
+  4. Cómo elige: para cada opción válida, mira la casilla vecina en esa dirección y mide la distancia en línea recta de esa casilla al objetivo. Se queda con la más corta. Puedes comparar la
+     distancia al cuadrado y te ahorras la raíz.
+  5. Empates: en el original se resuelven con un orden fijo de prioridad: Arriba, Izquierda, Abajo, Derecha. Te recomiendo usar un orden fijo para que el comportamiento sea predecible.
+
+  Qué vas a ver al probarlo
+
+  - Como solo mira la distancia en línea recta, a veces toma rutas tontas: se va hacia una pared que lo separa de Pac-Man y tiene que dar la vuelta larga. Eso no es un bug, así funciona el
+    original.
+  - El túnel no cuenta para la distancia. Blinky no "sabe" que cruzando el túnel llega más rápido.
+  - Si en algún caso la única salida es regresar, tienes que permitir la reversa como último recurso o se queda atorado. En tu laberinto casi no pasa, pero tenlo en cuenta.
+
+  Para más adelante
+
+  - Scatter / Chase: en el original los fantasmas alternan por tiempo entre perseguir y "dispersarse". Al dispersarse, el objetivo de Blinky es una esquina fija (arriba a la derecha) y por eso da
+    vueltas ahí. Lo interesante es que es exactamente el mismo algoritmo, solo cambia el objetivo.
+  - Cambio de modo: cuando cambia el modo, los fantasmas sí hacen una reversa forzada. Es la única excepción a la regla 3.
+  - Frightened (asustado): en vez de calcular distancias, elige una dirección válida al azar.
+
+  Una consideración de diseño
+
+  Ahora cada fantasma tiene su propio MoveBlinky/MoveInky, que además están duplicados. Con lo de arriba verás que los 4 fantasmas comparten el mismo algoritmo de movimiento y solo difieren en
+  cómo calculan su objetivo. Piensa en separar "calcular objetivo" (distinto para cada fantasma) de "elegir dirección hacia un objetivo" (común a todos). Así Pinky, Inky y Clyde te van a costar
+  casi nada.
+##########################################################################################################################################
   Lo que falta para terminar
 
   En orden aproximado:

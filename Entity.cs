@@ -1,24 +1,29 @@
 ﻿using Raylib_cs;
-using System.Numerics;
 
 namespace Pac_Man
 {
-    public class Entity
+    public abstract class Entity
     {
+        protected Entity(char key, float speed, Board board)
+        {
+            var spritePos = board.GetInitialPosition(key);
+            MazeCol = spritePos[1];
+            MazeRow = spritePos[0];
+            Board = board;
+            float x0 = Board.OffsetX + MazeCol * Board.Pixel;
+            float y0 = Board.OffsetY + MazeRow * Board.Pixel;
+            float x1 = Board.OffsetX + (MazeCol + 1) * Board.Pixel;
+            float y1 = Board.OffsetY + (MazeRow + 1) * Board.Pixel;
+            Bounds = new Rectangle(x0, y0, x1 - x0, y1 - y0);
+            Speed = speed;
+        }
         public Rectangle Bounds { get; set; }
         public float Speed { get; set; }
         public Direction Direction { get; set; }
         public int MazeCol { get; set; }
         public int MazeRow { get; set; }
-        public float DeltaTime { get; set; } = 0f;
         public Board Board { get; set; }
 
-        public void SetDeltaTime(float deltaTime)
-            => DeltaTime = deltaTime;
-        public virtual void Draw()
-        {
-            Raylib.DrawRectangleV(new Vector2(Bounds.X, Bounds.Y), new Vector2(Bounds.Width, Bounds.Height), Color.Black);
-        }
         public void SetPositionX(float position)
         {
             Rectangle newRecX = new Rectangle(position, Bounds.Y, Bounds.Width, Bounds.Height);
@@ -74,14 +79,14 @@ namespace Pac_Man
             return canPass;
         }
 
-        public void Move(Maze maze, bool canUseDoor)
+        public void Move(Maze maze, bool canUseDoor, float deltaTime)
         {
             if (Direction == Direction.Left)
             {
                 if (maze.Cells[MazeRow, MazeCol] == CellType.Bridge && MazeCol <=0)
                     SetPositionX(Board.OffsetX + (maze.Cells.GetLength(1)-1) * Board.Pixel);
                 else if (Check(Direction.Left, maze, canUseDoor))
-                    SetPositionX(Bounds.X - Speed * DeltaTime);
+                    SetPositionX(Bounds.X - Speed * deltaTime);
                 else
                     SetPositionX(Board.OffsetX + MazeCol * Board.Pixel);
             }
@@ -90,21 +95,21 @@ namespace Pac_Man
                 if (maze.Cells[MazeRow, MazeCol] == CellType.Bridge && MazeCol >= maze.Cells.GetLength(1)-1)
                     SetPositionX(Board.OffsetX);
                 else if (Check(Direction.Right, maze, canUseDoor))
-                    SetPositionX(Bounds.X + Speed * DeltaTime);
+                    SetPositionX(Bounds.X + Speed * deltaTime);
                 else
                     SetPositionX(Board.OffsetX + MazeCol * Board.Pixel);
             }
             if (Direction == Direction.Up)
             {
                 if (Check(Direction.Up, maze, canUseDoor))
-                    SetPositionY(Bounds.Y - Speed * DeltaTime);
+                    SetPositionY(Bounds.Y - Speed * deltaTime);
                 else
                     SetPositionY(Board.OffsetY + MazeRow * Board.Pixel);
             }
             if (Direction == Direction.Down)
             {
                 if (Check(Direction.Down, maze, canUseDoor))
-                    SetPositionY(Bounds.Y + Speed * DeltaTime);
+                    SetPositionY(Bounds.Y + Speed * deltaTime);
                 else
                     SetPositionY(Board.OffsetY + MazeRow * Board.Pixel);
             }
