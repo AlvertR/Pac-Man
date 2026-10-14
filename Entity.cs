@@ -16,6 +16,9 @@ namespace Pac_Man
             float y1 = Board.OffsetY + (MazeRow + 1) * Board.Pixel;
             Bounds = new Rectangle(x0, y0, x1 - x0, y1 - y0);
             Speed = speed;
+            CenterX = false;
+            CenterY = false;
+            Step = 0f;
         }
         public Rectangle Bounds { get; set; }
         public float Speed { get; set; }
@@ -23,6 +26,9 @@ namespace Pac_Man
         public int MazeCol { get; set; }
         public int MazeRow { get; set; }
         public Board Board { get; set; }
+        public float Step { get; set; }
+        public bool CenterX {  get; set; }
+        public bool CenterY { get; set; }
 
         public void SetPositionX(float position)
         {
@@ -81,6 +87,10 @@ namespace Pac_Man
 
         public void Move(Maze maze, bool canUseDoor, float deltaTime)
         {
+            Step = Speed * deltaTime;
+            CenterX = MathF.Abs(Bounds.X - (Board.OffsetX + MazeCol * Board.Pixel)) <= Step;
+            CenterY = MathF.Abs(Bounds.Y - (Board.OffsetY + MazeRow * Board.Pixel)) <= Step;
+
             if (Direction == Direction.Left)
             {
                 if (maze.Cells[MazeRow, MazeCol] == CellType.Bridge && MazeCol <=0)

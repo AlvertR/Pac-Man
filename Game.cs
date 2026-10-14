@@ -14,7 +14,7 @@ namespace Pac_Man
             Maze = new Maze(Board);
             Player = new Player('p', 100, Board);
             Blinky = new Ghost('b', 100, Board, Color.Red, Direction.Left, 0f, true, false);
-            Inky = new Ghost('i', 100, Board, Color.SkyBlue, Direction.Right, 10f);
+            Inky = new Ghost('i', 100, Board, Color.SkyBlue, Direction.Right, 10f, false, true);
         }
         public int HeightWindow { get; private set; }
         public int WidthWindow { get; private set; }
@@ -128,15 +128,100 @@ namespace Pac_Man
 
         public void MoveBlinky()
         {
-            if (!Blinky.Check(Direction.Left, Maze, true))
+            if (Blinky.CenterX && Blinky.CenterY)//se detiene, tal vez no queda centrado
             {
-                Blinky.SetPositionY(Board.OffsetY + Blinky.MazeRow * Board.Pixel);
-                Blinky.Direction = Direction.Right;
-            }
-            if (!Blinky.Check(Direction.Right, Maze, true))
-            {
-                Blinky.Direction = Direction.Left;
-                Blinky.SetPositionY(Board.OffsetY + Blinky.MazeRow * Board.Pixel);
+                Console.WriteLine("update dir");
+                bool up = Blinky.Check(Direction.Up, Maze, Blinky.CanUseDoor);
+                bool down = Blinky.Check(Direction.Down, Maze, Blinky.CanUseDoor);
+                bool left = Blinky.Check(Direction.Left, Maze, Blinky.CanUseDoor);
+                bool right = Blinky.Check(Direction.Right, Maze, Blinky.CanUseDoor);
+                int dUp = 30*30 + 28*28;
+                int dDown = 30 * 30 + 28 * 28;
+                int dLeft = 30 * 30 + 28 * 28;
+                int dRight = 30 * 30 + 28 * 28;
+                int dx = 0;
+                int dy = 0;
+                string dirMenor = string.Empty;
+                int menor = 0;
+                
+                if(Blinky.Direction == Direction.Up)
+                    down = false;
+                if (Blinky.Direction == Direction.Down)
+                    up = true;
+                if (Blinky.Direction == Direction.Left)
+                    right = true;
+                if (Blinky.Direction == Direction.Right)
+                    left = true;
+
+                if (Blinky.Direction == Direction.Up && !left && !right && !up)
+                    down = true;
+                if (Blinky.Direction == Direction.Down && !left && !right && !down)
+                    up = true;
+                if (Blinky.Direction == Direction.Left && !up && !down && !left)
+                    right = true;
+                if (Blinky.Direction == Direction.Right && !up && !down && !right)
+                    left = true;
+
+                if (up)
+                {
+                    dx = Blinky.MazeCol - Player.MazeCol;
+                    dy = Blinky.MazeRow - 1 - Player.MazeRow;
+                    dUp = dx * dx + dy * dy;
+                }
+                if (down)
+                {
+                    dx = Blinky.MazeCol - Player.MazeCol;
+                    dy = Blinky.MazeRow + 1 - Player.MazeRow;
+                    dDown = dx * dx + dy * dy;
+                }
+                if (left)
+                {
+                    dx = Blinky.MazeCol - 1 - Player.MazeCol;
+                    dy = Blinky.MazeRow - Player.MazeRow;
+                    dLeft = dx * dx + dy * dy;
+                }
+                if (right)
+                {
+                    dx = Blinky.MazeCol + 1 - Player.MazeCol;
+                    dy = Blinky.MazeRow - Player.MazeRow;
+                    dRight = dx * dx + dy * dy;
+                }
+                menor = dUp;
+                dirMenor = Direction.Up.ToString();
+                if(dLeft < menor)
+                {
+                    menor = dLeft;
+                    dirMenor = Direction.Left.ToString();
+                }
+                if(dRight < menor)
+                {
+                    menor = dRight;
+                    dirMenor = Direction.Right.ToString();
+                }
+                if(dDown < menor)
+                {
+                    menor=dDown;
+                    dirMenor=Direction.Down.ToString();
+                }
+                switch (dirMenor)
+                {
+                    case "Up":
+                        Blinky.Direction = Direction.Up;
+                        break;
+                    case "Left":
+                        Blinky.Direction = Direction.Left;
+                        break;
+                    case "Right":
+                        Blinky.Direction = Direction.Right;
+                        break;
+                    case "Down":
+                        Blinky.Direction = Direction.Down;
+                        break;
+                    default:
+                        break;
+                }
+                
+                Blinky.LastCell = new int[2] { Blinky.MazeRow, Blinky.MazeCol };
             }
         }
 

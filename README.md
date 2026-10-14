@@ -2,20 +2,20 @@
 
 Problemas que afectan directamente la IA
 
-  1. El fantasma no sabe cuándo está centrado en una casilla
+  ✅1. El fantasma no sabe cuándo está centrado en una casilla
   La lógica de "estoy alineado con la casilla y puedo girar" solo existe en Player.UpdateDirection (Player.cs:67-69, centerX/centerY). Ahora el fantasma cambia de dirección en cualquier punto, y
   eso funciona porque solo va de izquierda a derecha. Cuando empiece a girar en las intersecciones, si gira a media casilla se va a desalinear y a rozar las paredes. Ese cálculo debería poder
   usarlo cualquier Entity, no solo el jugador.
 
-  2. La puerta siempre está abierta para los fantasmas
+  ✅2. La puerta siempre está abierta para los fantasmas
   BaseMove llama a Move(maze, true, ...) siempre (Ghost.cs:65). Blinky empieza en (11,14), justo encima de la puerta (12,13-14). Si el jugador está más abajo, la IA va a decidir que "abajo" lo
   acerca y Blinky se va a meter a la casa. La puerta solo debería poder cruzarse al salir (y después, al regresar cuando se lo coman).
 
-  3. Algunos giros no alinean la posición
+  ✅3. Algunos giros no alinean la posición
   LeaveRoom cambia a Up y luego a InitialDirection sin ajustar el eje perpendicular (Ghost.cs:43-50). Además, UpdateColRow solo actualiza el eje de la dirección actual (Entity.cs:44). El jugador
   sí se alinea al girar con SetPositionX/SetPositionY. El fantasma necesita lo mismo, porque toda la IA depende de que MazeRow/MazeCol sean exactos.
 
-  Detalle menor: Ghost.cs todavía no está agregado en git (sale como ??). Acuérdate de agregarlo al hacer commit.
+  ✅Detalle menor: Ghost.cs todavía no está agregado en git (sale como ??). Acuérdate de agregarlo al hacer commit.
 
   ---
 

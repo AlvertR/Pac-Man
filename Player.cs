@@ -64,10 +64,6 @@ namespace Pac_Man
         public void UpdateDirection(Maze maze, float deltaTime)
         {
             bool update = false;
-            float step = Speed * deltaTime;
-            bool centerX = MathF.Abs(Bounds.X - (Board.OffsetX + MazeCol * Board.Pixel)) <= step;
-            bool centerY = MathF.Abs(Bounds.Y - (Board.OffsetY + MazeRow * Board.Pixel)) <= step;
-
             bool isReverse = (Direction == Direction.Left && DesiredDirection == Direction.Right)
                || (Direction == Direction.Right && DesiredDirection == Direction.Left)
                || (Direction == Direction.Up && DesiredDirection == Direction.Down)
@@ -80,13 +76,13 @@ namespace Pac_Man
                 return;
             }
 
-            if (Direction == Direction.Up && centerY)
+            if (Direction == Direction.Up && CenterY)
                 update = true;
-            if (Direction == Direction.Left && centerX)
+            if (Direction == Direction.Left && CenterX)
                 update = true;
-            if (Direction == Direction.Right && centerX)
+            if (Direction == Direction.Right && CenterX)
                 update = true;
-            if (Direction == Direction.Down && centerY)
+            if (Direction == Direction.Down && CenterY)
                 update = true;
 
 

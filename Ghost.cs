@@ -14,6 +14,7 @@ namespace Pac_Man
             TimeToStartMove = timeToStartMove;
             OutRoom = outOfRoom;
             CanUseDoor = canUseDoor;
+            LastCell = new int[2] {MazeRow, MazeCol};
         }
         public Color Color { get; set; }
         public bool CanMove { get; set; } = false;
@@ -21,6 +22,7 @@ namespace Pac_Man
         public bool CanUseDoor { get; set; }
         public float TimeToStartMove { get; set; }
         public Direction InitialDirection { get; set; }
+        public int[] LastCell {  get; set; }
 
         public void Draw()
         {
@@ -38,20 +40,28 @@ namespace Pac_Man
 
         public void LeaveRoom()
         {
-            var doorPosition = Board.GetInitialPosition('/');
-            int doorCol = doorPosition[1];
-            int doorRow = doorPosition[0];
-
-            if (MazeCol < doorCol)
-                Direction = Direction.Right;
-            if (MazeCol == doorCol && MazeRow > doorRow - 1)
-                Direction = Direction.Up;
-            if (MazeCol == doorCol && MazeRow < doorRow)
+            if (CanUseDoor)
             {
-                OutRoom = true;
-                Direction = InitialDirection;
-            }
+                var doorPosition = Board.GetInitialPosition('/');
+                int doorCol = doorPosition[1];
+                int doorRow = doorPosition[0];
 
+                if (MazeCol < doorCol)
+                    Direction = Direction.Right;
+                if (MazeCol == doorCol && CenterY && MazeRow > doorRow - 1)
+                {
+                    Direction = Direction.Up;
+                    SetPositionX(Board.OffsetX + MazeCol * Board.Pixel);
+                }
+                if (MazeCol == doorCol && CenterX && MazeRow < doorRow)
+                {
+                    OutRoom = true;
+                    CanUseDoor = false;
+                    Direction = InitialDirection;
+                    SetPositionX(Board.OffsetX + MazeCol * Board.Pixel);
+                    SetPositionY(Board.OffsetY + MazeRow * Board.Pixel);
+                }
+            }
         }
 
         public void BaseMove(float deltaTime, Maze maze, Action GostLogicMove)
@@ -64,7 +74,7 @@ namespace Pac_Man
                 else
                     GostLogicMove();
 
-                Move(maze, true, deltaTime);
+                Move(maze, CanUseDoor, deltaTime);
                 UpdateColRow();
             }
         }
