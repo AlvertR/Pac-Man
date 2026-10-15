@@ -42,6 +42,23 @@ namespace Pac_Man
             this.Bounds = newRecY;
         }
 
+        public Direction GetReverse(Direction direction)
+        {
+            switch (direction)
+            {
+                case Direction.Up: 
+                    return Direction.Down;
+                case Direction.Down: 
+                    return Direction.Up;
+                case Direction.Left: 
+                    return Direction.Right;
+                case Direction.Right:
+                    return Direction.Left;
+                default:
+                    return direction;
+            }
+        }
+
         public void UpdateColRow()
         {
             float x = (Bounds.X - Board.OffsetX) / Board.Pixel;

@@ -1,95 +1,57 @@
 ﻿# Pac-Man
 
-Problemas que afectan directamente la IA
+  Bugs
 
-  ✅1. El fantasma no sabe cuándo está centrado en una casilla
-  La lógica de "estoy alineado con la casilla y puedo girar" solo existe en Player.UpdateDirection (Player.cs:67-69, centerX/centerY). Ahora el fantasma cambia de dirección en cualquier punto, y
-  eso funciona porque solo va de izquierda a derecha. Cuando empiece a girar en las intersecciones, si gira a media casilla se va a desalinear y a rozar las paredes. Ese cálculo debería poder
-  usarlo cualquier Entity, no solo el jugador.
+  1. Inky se comporta igual que Pinky (Game.cs:95)
+  var targetInky = GetTarget(Player, 4);   // mismo objetivo que Pinky
+  Nada llama a GetTargetInky(). Además, ese método sigue con el error de la revisión pasada: solo duplica el vector en
+  el eje en que se mueve el jugador. El otro eje se queda en la posición del jugador. Y si el jugador está en None,
+  ignora a Blinky por completo.
 
-  ✅2. La puerta siempre está abierta para los fantasmas
-  BaseMove llama a Move(maze, true, ...) siempre (Ghost.cs:65). Blinky empieza en (11,14), justo encima de la puerta (12,13-14). Si el jugador está más abajo, la IA va a decidir que "abajo" lo
-  acerca y Blinky se va a meter a la casa. La puerta solo debería poder cruzarse al salir (y después, al regresar cuando se lo coman).
+  La fórmula correcta usa los dos ejes siempre:
+  - pivote = GetTarget(Player, 2)
+  - target = 2 * pivote - Blinky, tanto en filas como en columnas.
 
-  ✅3. Algunos giros no alinean la posición
-  LeaveRoom cambia a Up y luego a InitialDirection sin ajustar el eje perpendicular (Ghost.cs:43-50). Además, UpdateColRow solo actualiza el eje de la dirección actual (Entity.cs:44). El jugador
-  sí se alinea al girar con SetPositionX/SetPositionY. El fantasma necesita lo mismo, porque toda la IA depende de que MazeRow/MazeCol sean exactos.
+  Así GetTargetInky puede reutilizar GetTarget y se reduce a dos líneas.
 
-  ✅Detalle menor: Ghost.cs todavía no está agregado en git (sale como ??). Acuérdate de agregarlo al hacer commit.
+  2. Hay un UpdateColRow() que sobra en la reversa (Ghost.cs:155)
+  Se ejecuta antes de cambiar Direction, así que recalcula la celda con la dirección vieja y no hace nada útil. En el
+  mejor caso es inofensivo y en el peor mueve MazeRow/MazeCol en el frame en que das la vuelta. Bórralo: el switch de
+  abajo ya alinea la posición.
 
-  ---
+  3. Clyde todavía persigue igual que Blinky (Game.cs:97). Ya lo tienes como pendiente; lo menciono para que no se te
+  olvide.
 
-  Cómo funciona Blinky
+  Mejoras (no son urgentes)
 
-  Blinky no "busca un camino" hacia Pac-Man. No usa BFS ni A*: es una decisión voraz (greedy) que toma en cada casilla.
+  - Mueve el cálculo de objetivos fuera de Game. GetTarget y GetTargetInky son lógica de los fantasmas. Una opción es
+    darle a Ghost un Func<int[]> (o un método virtual GetChaseTarget()) para que Update sea solo foreach (var g in
+    ghosts) g.BaseMove(...). Te va a servir mucho para scatter y frightened, porque ahí solo cambia el objetivo.
+  - Usa (int row, int col) o un struct en vez de int[2]. target[0]/target[1], LastCell y DoorPosition son fáciles de
+    confundir (fila o columna), y cada llamada a GetTarget crea un arreglo nuevo en cada frame.
+  - Puedes compactar ChooseDirection. Los cuatro bloques casi idénticos caben en un ciclo sobre {Up, Left, Down, Right}:
+    ese orden ya da el desempate correcto, con un helper Neighbor(dir) y GetReverse(Direction) para descartar la
+    reversa. Lo que tienes ahora funciona bien, esto solo es limpieza.
+  - Todos tienen velocidad 100, el jugador y los fantasmas. En el original Pac-Man es un poco más rápido, y los
+    fantasmas van más lento en el túnel y cuando están asustados. Cuando llegues a frightened vas a necesitar cambiar
+    Speed de forma dinámica.
+  - El túnel funciona por el orden de las llamadas. Probablemente el teletransporte de Move ocurre antes de que el
+    fantasma llegue al centro de la celda del borde. Si un día cambias ese orden, el fantasma podría encontrarse sin
+    salidas en la columna 0 y darse la vuelta.
 
-  1. Casilla objetivo (target): en modo persecución, el objetivo de Blinky es la casilla donde está Pac-Man en ese momento. Eso es lo único que lo distingue de los demás fantasmas, porque cada
-     uno calcula su objetivo de otra forma.
-  2. Cuándo decide: solo cuando llega al centro de una casilla, y una sola vez por casilla. Si decide en cada frame mientras está "casi centrado", puede cambiar de opinión varias veces y quedarse
-     vibrando. Te conviene recordar en qué casilla tomó la última decisión.
-  3. Qué opciones tiene: revisa las 4 direcciones y descarta:
-     - las que tienen pared (o la puerta, si ya salió);
-     - la dirección contraria a la que lleva. Los fantasmas originales nunca se dan la vuelta por su cuenta. Esto es lo que hace que su movimiento se vea natural y no tiemble.
-  4. Cómo elige: para cada opción válida, mira la casilla vecina en esa dirección y mide la distancia en línea recta de esa casilla al objetivo. Se queda con la más corta. Puedes comparar la
-     distancia al cuadrado y te ahorras la raíz.
-  5. Empates: en el original se resuelven con un orden fijo de prioridad: Arriba, Izquierda, Abajo, Derecha. Te recomiendo usar un orden fijo para que el comportamiento sea predecible.
+  Lo que sigue
 
-  Qué vas a ver al probarlo
+  1. Arreglar el objetivo de Inky (bug 1).
+  2. Clyde: si la distancia al jugador es mayor a 8 casillas (compara 64 contra la distancia al cuadrado), su objetivo
+     es el jugador; si no, su esquina de abajo a la izquierda.
+  3. Colisión Pac-Man–fantasma, vidas y reinicio de posiciones. Para el reinicio tendrás que restaurar TimeToStartMove,
+     OutRoom, CanUseDoor, LastCell y Direction, así que conviene un método Reset() en Ghost y otro en Player.
+  4. Scatter/chase por tiempo, con reversa forzada al cambiar de modo. Vas a tener que saltarte el Direction != reversa
+     solo en ese frame.
+  5. Frightened, pantallas de victoria y Game Over.
 
-  - Como solo mira la distancia en línea recta, a veces toma rutas tontas: se va hacia una pared que lo separa de Pac-Man y tiene que dar la vuelta larga. Eso no es un bug, así funciona el
-    original.
-  - El túnel no cuenta para la distancia. Blinky no "sabe" que cruzando el túnel llega más rápido.
-  - Si en algún caso la única salida es regresar, tienes que permitir la reversa como último recurso o se queda atorado. En tu laberinto casi no pasa, pero tenlo en cuenta.
-
-  Para más adelante
-
-  - Scatter / Chase: en el original los fantasmas alternan por tiempo entre perseguir y "dispersarse". Al dispersarse, el objetivo de Blinky es una esquina fija (arriba a la derecha) y por eso da
-    vueltas ahí. Lo interesante es que es exactamente el mismo algoritmo, solo cambia el objetivo.
-  - Cambio de modo: cuando cambia el modo, los fantasmas sí hacen una reversa forzada. Es la única excepción a la regla 3.
-  - Frightened (asustado): en vez de calcular distancias, elige una dirección válida al azar.
-
-  Una consideración de diseño
-
-  Ahora cada fantasma tiene su propio MoveBlinky/MoveInky, que además están duplicados. Con lo de arriba verás que los 4 fantasmas comparten el mismo algoritmo de movimiento y solo difieren en
-  cómo calculan su objetivo. Piensa en separar "calcular objetivo" (distinto para cada fantasma) de "elegir dirección hacia un objetivo" (común a todos). Así Pinky, Inky y Clyde te van a costar
-  casi nada.
-##########################################################################################################################################
-  Lo que falta para terminar
-
-  En orden aproximado:
-
-
-  1. IA de los fantasmas. En cada intersección, el fantasma elige la casilla vecina más cercana a un objetivo, y no puede dar media vuelta. El objetivo cambia según el fantasma:
+  IA de los fantasmas. En cada intersección, el fantasma elige la casilla vecina más cercana a un objetivo, y no puede dar media vuelta. El objetivo cambia según el fantasma:
      - Blinky: la casilla del jugador.
      - Pinky ('r'): 4 casillas delante del jugador.
      - Inky ('i'): un vector calculado desde Blinky.
      - Clyde ('c'): persigue al jugador, pero si está a menos de 8 casillas se va a su esquina.
-  2. Salida de la casa. Pinky, Inky y Clyde salen por la puerta con un temporizador. Una vez fuera, ya no deben poder volver a entrar (solo cuando se los comen).
-  3. Colisión jugador–fantasma, comparando celdas o con CheckCollisionRecs.
-  4. Vidas y reinicio de posiciones cuando un fantasma te atrapa.
-  En orden aproximado:
-
-  1. IA de los fantasmas. En cada intersección, el fantasma elige la casilla vecina más cercana a un objetivo, y no puede dar media vuelta. El objetivo
-     cambia según el fantasma:
-     - Blinky: la casilla del jugador.
-     - Pinky ('r'): 4 casillas delante del jugador.
-     - Inky ('i'): un vector calculado desde Blinky.
-     - Clyde ('c'): persigue al jugador, pero si está a menos de 8 casillas se va a su esquina.
-  2. Salida de la casa. Pinky, Inky y Clyde salen por la puerta con un temporizador. Una vez fuera, ya no deben poder volver a entrar (solo cuando se los
-     comen).
-  3. Colisión jugador–fantasma, comparando celdas o con CheckCollisionRecs.
-
-  1. IA de los fantasmas. En cada intersección, el fantasma elige la casilla vecina más cercana a un objetivo, y no puede dar media vuelta. El objetivo cambia según el fantasma:
-     - Blinky: la casilla del jugador.
-     - Pinky ('r'): 4 casillas delante del jugador.
-     - Inky ('i'): un vector calculado desde Blinky.
-     - Clyde ('c'): persigue al jugador, pero si está a menos de 8 casillas se va a su esquina.
-  2. Salida de la casa. Pinky, Inky y Clyde salen por la puerta con un temporizador. Una vez fuera, ya no deben poder volver a entrar (solo cuando se los comen).
-  3. Colisión jugador–fantasma, comparando celdas o con CheckCollisionRecs.
-  4. Vidas y reinicio de posiciones cuando un fantasma te atrapa.
-  5. Modo asustado con el power pellet: los fantasmas se ponen azules y huyen, puedes comértelos (200, 400, 800, 1600 puntos) y regresan a la casa como ojos.
-  6. Alternancia Scatter/Chase por tiempo: cada fantasma va a su esquina un rato y luego persigue.
-  7. Condición de victoria: cuando no queden pellets, pasas al siguiente nivel.
-  8. Estados del juego: Ready / Playing / Muerte / Game Over / Victoria, para no mezclarlos con ifs dentro de Update.
-
-  Lo que más te conviene ahora es el punto 1 de diseño (constructor en Entity) y el punto 5 (giro reutilizable). Con eso, los otros tres fantasmas y la IA salen casi solos.

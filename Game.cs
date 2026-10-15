@@ -14,8 +14,9 @@ namespace Pac_Man
             Maze = new Maze(Board);
             Player = new Player('p', 100, Board);
             Blinky = new Ghost('b', 100, Board, Color.Red, Direction.Left, 0f, true, false);
-            Inky = new Ghost('i', 100, Board, Color.SkyBlue, Direction.Left, 10f, false, true);
-            Pinky = new Ghost('r', 100, Board, Color.Pink, Direction.Right, 15f, false, true);
+            Inky = new Ghost('i', 100, Board, Color.SkyBlue, Direction.Right, 10f, false, true);
+            Pinky = new Ghost('r', 100, Board, Color.Pink, Direction.Left, 5f, false, true);
+            Clyde = new Ghost('c', 100, Board, Color.Orange, Direction.Right, 15f, false, true);
         }
         public int HeightWindow { get; private set; }
         public int WidthWindow { get; private set; }
@@ -29,6 +30,7 @@ namespace Pac_Man
         public Ghost Blinky { get; set; }
         public Ghost Pinky { get; set; }
         public Ghost Inky { get; set; }
+        public Ghost Clyde { get; set; }
 
         public void Run()
         {
@@ -70,6 +72,7 @@ namespace Pac_Man
                     Blinky.Draw();
                     Pinky.Draw();
                     Inky.Draw();
+                    Clyde.Draw();
                     if(Status == GameStatus.Paused)
                         Raylib.DrawText("Pausa", 300, 400, 40, Color.White);
                     break;
@@ -86,9 +89,12 @@ namespace Pac_Man
             switch (Status) {
                 case GameStatus.Playing:
                     MovementPlayer();
-                    Blinky.BaseMove(DeltaTime, Maze, MoveBlinky);
-                    Pinky.BaseMove(DeltaTime, Maze, MovePinky);
-                    Inky.BaseMove(DeltaTime, Maze, MoveInky);
+                    Blinky.BaseMove(DeltaTime, Maze, Player.MazeRow, Player.MazeCol);
+                    var targetPinky = GetTarget(Player, 4);
+                    Pinky.BaseMove(DeltaTime, Maze, targetPinky[0], targetPinky[1]);
+                    var targetInky = GetTargetInky();
+                    Inky.BaseMove(DeltaTime, Maze, targetInky[0], targetInky[1]);
+                    Clyde.BaseMove(DeltaTime, Maze, Player.MazeRow, Player.MazeCol);
                     break;
                 case GameStatus.Start:
                 case GameStatus.Paused:
@@ -130,384 +136,46 @@ namespace Pac_Man
             Player.UpdatePoints(Maze);
         }
 
-        public void MoveBlinky()
+        public int[] GetTarget(Entity entity, int n)
         {
-            bool isLast = Blinky.LastCell[0] == Blinky.MazeRow && Blinky.LastCell[1] == Blinky.MazeCol;
-            if (Blinky.CenterX && Blinky.CenterY && !isLast)
-            {
-                bool up = Blinky.Check(Direction.Up, Maze, Blinky.CanUseDoor);
-                bool down = Blinky.Check(Direction.Down, Maze, Blinky.CanUseDoor);
-                bool left = Blinky.Check(Direction.Left, Maze, Blinky.CanUseDoor);
-                bool right = Blinky.Check(Direction.Right, Maze, Blinky.CanUseDoor);
-                int dUp = 30*30 + 28*28;
-                int dDown = 30 * 30 + 28 * 28;
-                int dLeft = 30 * 30 + 28 * 28;
-                int dRight = 30 * 30 + 28 * 28;
-                int dx = 0;
-                int dy = 0;
-                string dirMenor = string.Empty;
-                int menor = 0;
-                
-                if(Blinky.Direction == Direction.Up)
-                    down = false;
-                if (Blinky.Direction == Direction.Down)
-                    up = false;
-                if (Blinky.Direction == Direction.Left)
-                    right = false;
-                if (Blinky.Direction == Direction.Right)
-                    left = false;
+            int[] target = new int[2];
+            int mazeCol = entity.MazeCol;
+            int mazeRow = entity.MazeRow;
 
-                if (Blinky.Direction == Direction.Up && !left && !right && !up)
-                {
-                    Blinky.Direction = Direction.Down;
-                    Blinky.SetPositionX(Board.OffsetX + Blinky.MazeCol * Board.Pixel);
-                    Blinky.UpdateColRow();
-                    return;
-                }
-                if (Blinky.Direction == Direction.Down && !left && !right && !down)
-                {
-                    Blinky.Direction = Direction.Up;
-                    Blinky.SetPositionX(Board.OffsetX + Blinky.MazeCol * Board.Pixel);
-                    Blinky.UpdateColRow();
-                    return;
-                }
-                if (Blinky.Direction == Direction.Left && !up && !down && !left)
-                {
-                    Blinky.Direction = Direction.Right;
-                    Blinky.SetPositionY(Board.OffsetY + Blinky.MazeRow * Board.Pixel);
-                    Blinky.UpdateColRow();
-                    return;
-                }
-                if (Blinky.Direction == Direction.Right && !up && !down && !right)
-                {
-                    Blinky.Direction = Direction.Left;
-                    Blinky.SetPositionY(Board.OffsetY + Blinky.MazeRow * Board.Pixel);
-                    Blinky.UpdateColRow();
-                    return;
-                }
+            if (entity.Direction == Direction.Up)
+                mazeRow = mazeRow - n;
+            if (entity.Direction == Direction.Down)
+                mazeRow = mazeRow + n;
+            if (entity.Direction == Direction.Left)
+                mazeCol = mazeCol - n;
+            if (entity.Direction == Direction.Right)
+                mazeCol = mazeCol + n;
 
+            target[0] = mazeRow;
+            target[1] = mazeCol;
 
-                if (up)
-                {
-                    dx = Blinky.MazeCol - Player.MazeCol;
-                    dy = Blinky.MazeRow - 1 - Player.MazeRow;
-                    dUp = dx * dx + dy * dy;
-                }
-                if (down)
-                {
-                    dx = Blinky.MazeCol - Player.MazeCol;
-                    dy = Blinky.MazeRow + 1 - Player.MazeRow;
-                    dDown = dx * dx + dy * dy;
-                }
-                if (left)
-                {
-                    dx = Blinky.MazeCol - 1 - Player.MazeCol;
-                    dy = Blinky.MazeRow - Player.MazeRow;
-                    dLeft = dx * dx + dy * dy;
-                }
-                if (right)
-                {
-                    dx = Blinky.MazeCol + 1 - Player.MazeCol;
-                    dy = Blinky.MazeRow - Player.MazeRow;
-                    dRight = dx * dx + dy * dy;
-                }
-                menor = dUp;
-                dirMenor = Direction.Up.ToString();
-                if(dLeft < menor)
-                {
-                    menor = dLeft;
-                    dirMenor = Direction.Left.ToString();
-                }
-                if(dDown < menor)
-                {
-                    menor=dDown;
-                    dirMenor=Direction.Down.ToString();
-                }
-                if(dRight < menor)
-                {
-                    menor = dRight;
-                    dirMenor = Direction.Right.ToString();
-                }
-                
-                switch (dirMenor)
-                {
-                    case "Up":
-                        Blinky.Direction = Direction.Up;
-                        Blinky.SetPositionX(Board.OffsetX + Blinky.MazeCol * Board.Pixel);
-                        break;
-                    case "Left":
-                        Blinky.Direction = Direction.Left;
-                        Blinky.SetPositionY(Board.OffsetY + Blinky.MazeRow * Board.Pixel);
-                        break;
-                    case "Right":
-                        Blinky.Direction = Direction.Right;
-                        Blinky.SetPositionY(Board.OffsetY + Blinky.MazeRow * Board.Pixel);
-                        break;
-                    case "Down":
-                        Blinky.Direction = Direction.Down;
-                        Blinky.SetPositionX(Board.OffsetX + Blinky.MazeCol * Board.Pixel);
-                        break;
-                    default:
-                        break;
-                }
-
-                Blinky.LastCell[0] = Blinky.MazeRow;
-                Blinky.LastCell[1] = Blinky.MazeCol;
-            }
+            return target;
         }
 
-        public void MovePinky()
+        public int[] GetTargetInky()
         {
-            bool isLast = Pinky.LastCell[0] == Pinky.MazeRow && Pinky.LastCell[1] == Pinky.MazeCol;
-            if (Pinky.CenterX && Pinky.CenterY && !isLast)
-            {
-                bool up = Pinky.Check(Direction.Up, Maze, Pinky.CanUseDoor);
-                bool down = Pinky.Check(Direction.Down, Maze, Pinky.CanUseDoor);
-                bool left = Pinky.Check(Direction.Left, Maze, Pinky.CanUseDoor);
-                bool right = Pinky.Check(Direction.Right, Maze, Pinky.CanUseDoor);
-                int dUp = 30 * 30 + 28 * 28;
-                int dDown = 30 * 30 + 28 * 28;
-                int dLeft = 30 * 30 + 28 * 28;
-                int dRight = 30 * 30 + 28 * 28;
-                int dx = 0;
-                int dy = 0;
-                int mazeCol = Pinky.MazeCol + 4;
-                int mazeRow = Pinky.MazeRow + 4;
-                string dirMenor = string.Empty;
-                int menor = 0;
+            int[] target = new int[2];
+            int mazeCol = Player.MazeCol;
+            int mazeRow = Player.MazeRow;
 
-                if (Pinky.Direction == Direction.Up)
-                    down = false;
-                if (Pinky.Direction == Direction.Down)
-                    up = false;
-                if (Pinky.Direction == Direction.Left)
-                    right = false;
-                if (Pinky.Direction == Direction.Right)
-                    left = false;
+            if (Player.Direction == Direction.Up)
+                mazeRow = 2 * (mazeRow - 2) - Blinky.MazeRow;
+            if (Player.Direction == Direction.Down)
+                mazeRow = 2 * (mazeRow + 2) - Blinky.MazeRow;
+            if (Player.Direction == Direction.Left)
+                mazeCol = 2 * (mazeCol - 2) - Blinky.MazeCol;
+            if (Player.Direction == Direction.Right)
+                mazeCol = 2 * (mazeCol + 2) - Blinky.MazeCol;
 
-                if (Pinky.Direction == Direction.Up && !left && !right && !up)
-                {
-                    Pinky.Direction = Direction.Down;
-                    Pinky.SetPositionX(Board.OffsetX + Pinky.MazeCol * Board.Pixel);
-                    Pinky.UpdateColRow();
-                    return;
-                }
-                if (Pinky.Direction == Direction.Down && !left && !right && !down)
-                {
-                    Pinky.Direction = Direction.Up;
-                    Pinky.SetPositionX(Board.OffsetX + Pinky.MazeCol * Board.Pixel);
-                    Pinky.UpdateColRow();
-                    return;
-                }
-                if (Pinky.Direction == Direction.Left && !up && !down && !left)
-                {
-                    Pinky.Direction = Direction.Right;
-                    Pinky.SetPositionY(Board.OffsetY + Pinky.MazeRow * Board.Pixel);
-                    Pinky.UpdateColRow();
-                    return;
-                }
-                if (Pinky.Direction == Direction.Right && !up && !down && !right)
-                {
-                    Pinky.Direction = Direction.Left;
-                    Pinky.SetPositionY(Board.OffsetY + Pinky.MazeRow * Board.Pixel);
-                    Pinky.UpdateColRow();
-                    return;
-                }
+            target[0] = mazeRow;
+            target[1] = mazeCol;
 
-
-                if (up)
-                {
-                    dx = mazeCol - Player.MazeCol;
-                    dy = mazeRow - 1 - Player.MazeRow;
-                    dUp = dx * dx + dy * dy;
-                }
-                if (down)
-                {
-                    dx = mazeCol - Player.MazeCol;
-                    dy = mazeRow + 1 - Player.MazeRow;
-                    dDown = dx * dx + dy * dy;
-                }
-                if (left)
-                {
-                    dx = mazeCol - 1 - Player.MazeCol;
-                    dy = mazeRow - Player.MazeRow;
-                    dLeft = dx * dx + dy * dy;
-                }
-                if (right)
-                {
-                    dx = mazeCol + 1 - Player.MazeCol;
-                    dy = mazeRow - Player.MazeRow;
-                    dRight = dx * dx + dy * dy;
-                }
-                menor = dUp;
-                dirMenor = Direction.Up.ToString();
-                if (dLeft < menor)
-                {
-                    menor = dLeft;
-                    dirMenor = Direction.Left.ToString();
-                }
-                if (dDown < menor)
-                {
-                    menor = dDown;
-                    dirMenor = Direction.Down.ToString();
-                }
-                if (dRight < menor)
-                {
-                    menor = dRight;
-                    dirMenor = Direction.Right.ToString();
-                }
-
-                switch (dirMenor)
-                {
-                    case "Up":
-                        Pinky.Direction = Direction.Up;
-                        Pinky.SetPositionX(Board.OffsetX + Pinky.MazeCol * Board.Pixel);
-                        break;
-                    case "Left":
-                        Pinky.Direction = Direction.Left;
-                        Pinky.SetPositionY(Board.OffsetY + Pinky.MazeRow * Board.Pixel);
-                        break;
-                    case "Right":
-                        Pinky.Direction = Direction.Right;
-                        Pinky.SetPositionY(Board.OffsetY + Pinky.MazeRow * Board.Pixel);
-                        break;
-                    case "Down":
-                        Pinky.Direction = Direction.Down;
-                        Pinky.SetPositionX(Board.OffsetX + Pinky.MazeCol * Board.Pixel);
-                        break;
-                    default:
-                        break;
-                }
-
-                Pinky.LastCell[0] = Pinky.MazeRow;
-                Pinky.LastCell[1] = Pinky.MazeCol;
-            }
-        }
-
-        public void MoveInky()
-        {
-            bool isLast = Inky.LastCell[0] == Inky.MazeRow && Inky.LastCell[1] == Inky.MazeCol;
-            if (Inky.CenterX && Inky.CenterY && !isLast)
-            {
-                bool up = Inky.Check(Direction.Up, Maze, Inky.CanUseDoor);
-                bool down = Inky.Check(Direction.Down, Maze, Inky.CanUseDoor);
-                bool left = Inky.Check(Direction.Left, Maze, Inky.CanUseDoor);
-                bool right = Inky.Check(Direction.Right, Maze, Inky.CanUseDoor);
-                int dUp = 30 * 30 + 28 * 28;
-                int dDown = 30 * 30 + 28 * 28;
-                int dLeft = 30 * 30 + 28 * 28;
-                int dRight = 30 * 30 + 28 * 28;
-                int dx = 0;
-                int dy = 0;
-                string dirMenor = string.Empty;
-                int menor = 0;
-
-                if (Inky.Direction == Direction.Up)
-                    down = false;
-                if (Inky.Direction == Direction.Down)
-                    up = false;
-                if (Inky.Direction == Direction.Left)
-                    right = false;
-                if (Inky.Direction == Direction.Right)
-                    left = false;
-
-                if (Inky.Direction == Direction.Up && !left && !right && !up)
-                {
-                    Inky.Direction = Direction.Down;
-                    Inky.SetPositionX(Board.OffsetX + Inky.MazeCol * Board.Pixel);
-                    Inky.UpdateColRow();
-                    return;
-                }
-                if (Inky.Direction == Direction.Down && !left && !right && !down)
-                {
-                    Inky.Direction = Direction.Up;
-                    Inky.SetPositionX(Board.OffsetX + Inky.MazeCol * Board.Pixel);
-                    Inky.UpdateColRow();
-                    return;
-                }
-                if (Inky.Direction == Direction.Left && !up && !down && !left)
-                {
-                    Inky.Direction = Direction.Right;
-                    Inky.SetPositionY(Board.OffsetY + Inky.MazeRow * Board.Pixel);
-                    Inky.UpdateColRow();
-                    return;
-                }
-                if (Inky.Direction == Direction.Right && !up && !down && !right)
-                {
-                    Inky.Direction = Direction.Left;
-                    Inky.SetPositionY(Board.OffsetY + Inky.MazeRow * Board.Pixel);
-                    Inky.UpdateColRow();
-                    return;
-                }
-
-
-                if (up)
-                {
-                    dx = Inky.MazeCol - Blinky.MazeCol;
-                    dy = Inky.MazeRow - 1 - Blinky.MazeRow;
-                    dUp = dx * dx + dy * dy;
-                }
-                if (down)
-                {
-                    dx = Inky.MazeCol - Blinky.MazeCol;
-                    dy = Inky.MazeRow + 1 - Blinky.MazeRow;
-                    dDown = dx * dx + dy * dy;
-                }
-                if (left)
-                {
-                    dx = Inky.MazeCol - 1 - Blinky.MazeCol;
-                    dy = Inky.MazeRow - Blinky.MazeRow;
-                    dLeft = dx * dx + dy * dy;
-                }
-                if (right)
-                {
-                    dx = Inky.MazeCol + 1 - Blinky.MazeCol;
-                    dy = Inky.MazeRow - Blinky.MazeRow;
-                    dRight = dx * dx + dy * dy;
-                }
-                menor = dUp;
-                dirMenor = Direction.Up.ToString();
-                if (dLeft < menor)
-                {
-                    menor = dLeft;
-                    dirMenor = Direction.Left.ToString();
-                }
-                if (dDown < menor)
-                {
-                    menor = dDown;
-                    dirMenor = Direction.Down.ToString();
-                }
-                if (dRight < menor)
-                {
-                    menor = dRight;
-                    dirMenor = Direction.Right.ToString();
-                }
-
-                switch (dirMenor)
-                {
-                    case "Up":
-                        Inky.Direction = Direction.Up;
-                        Inky.SetPositionX(Board.OffsetX + Inky.MazeCol * Board.Pixel);
-                        break;
-                    case "Left":
-                        Inky.Direction = Direction.Left;
-                        Inky.SetPositionY(Board.OffsetY + Inky.MazeRow * Board.Pixel);
-                        break;
-                    case "Right":
-                        Inky.Direction = Direction.Right;
-                        Inky.SetPositionY(Board.OffsetY + Inky.MazeRow * Board.Pixel);
-                        break;
-                    case "Down":
-                        Inky.Direction = Direction.Down;
-                        Inky.SetPositionX(Board.OffsetX + Inky.MazeCol * Board.Pixel);
-                        break;
-                    default:
-                        break;
-                }
-
-                Inky.LastCell[0] = Inky.MazeRow;
-                Inky.LastCell[1] = Inky.MazeCol;
-            }
+            return target;
         }
     }
 }

@@ -16,6 +16,9 @@ namespace Pac_Man
             CanUseDoor = canUseDoor;
             LastCell[0] = MazeRow;
             LastCell[1] = MazeCol;
+            var doorPos = Board.GetInitialPosition('/');
+            DoorPosition[0] = doorPos[0];
+            DoorPosition[1] = doorPos[1];
         }
         public Color Color { get; set; }
         public bool CanMove { get; set; } = false;
@@ -24,6 +27,7 @@ namespace Pac_Man
         public float TimeToStartMove { get; set; }
         public Direction InitialDirection { get; set; }
         public int[] LastCell {  get; set; } = new int[2];
+        public int[] DoorPosition {  get; set; } = new int[2];
 
         public void Draw()
         {
@@ -48,9 +52,8 @@ namespace Pac_Man
         {
             if (CanUseDoor)
             {
-                var doorPosition = Board.GetInitialPosition('/');
-                int doorCol = doorPosition[1];
-                int doorRow = doorPosition[0];
+                int doorCol = DoorPosition[1];
+                int doorRow = DoorPosition[0];
 
                 if (MazeCol < doorCol)
                     Direction = Direction.Right;
@@ -70,7 +73,7 @@ namespace Pac_Man
             }
         }
 
-        public void BaseMove(float deltaTime, Maze maze, Action GostLogicMove)
+        public void BaseMove(float deltaTime, Maze maze, int targetRow, int targetCol)
         {
             StartMoveCounter(deltaTime);
             if (CanMove)
@@ -78,11 +81,104 @@ namespace Pac_Man
                 if (!OutRoom)
                     LeaveRoom();
                 else
-                    GostLogicMove();
+                    ChooseDirection(maze, targetRow, targetCol);
 
                 Move(maze, CanUseDoor, deltaTime);
                 UpdateColRow();
             }
+        }
+
+        public void ChooseDirection(Maze maze, int targetRow, int targetCol)
+        {
+            bool isLastCell = LastCell[0] == MazeRow && LastCell[1] == MazeCol;
+            if (isLastCell || !(CenterX && CenterY))
+                return;
+
+            int dUp = int.MaxValue;
+            int dDown = int.MaxValue;
+            int dLeft = int.MaxValue;
+            int dRight = int.MaxValue;
+            int dx = 0;
+            int dy = 0;
+            Direction dirMenor = Direction.None;
+            int menor = int.MaxValue;
+
+            if (Check(Direction.Up, maze, CanUseDoor) && Direction != Direction.Down)
+            {
+                dx = MazeCol - targetCol;
+                dy = MazeRow - 1 - targetRow;
+                dUp = dx * dx + dy * dy;
+            }
+            if (Check(Direction.Down, maze, CanUseDoor) && Direction != Direction.Up)
+            {
+                dx = MazeCol - targetCol;
+                dy = MazeRow + 1 - targetRow;
+                dDown = dx * dx + dy * dy;
+            }
+            if (Check(Direction.Left, maze, CanUseDoor) && Direction != Direction.Right)
+            {
+                dx = MazeCol - 1 - targetCol;
+                dy = MazeRow - targetRow;
+                dLeft = dx * dx + dy * dy;
+            }
+            if (Check(Direction.Right, maze, CanUseDoor) && Direction != Direction.Left)
+            {
+                dx = MazeCol + 1 - targetCol;
+                dy = MazeRow - targetRow;
+                dRight = dx * dx + dy * dy;
+            }
+
+            if (dUp < menor)
+            {
+                menor = dUp;
+                dirMenor = Direction.Up;
+            }
+            if (dLeft < menor)
+            {
+                menor = dLeft;
+                dirMenor = Direction.Left;
+            }
+            if (dDown < menor)
+            {
+                menor = dDown;
+                dirMenor = Direction.Down;
+            }
+            if (dRight < menor)
+            {
+                menor = dRight;
+                dirMenor = Direction.Right;
+            }
+
+            if (dirMenor == Direction.None)
+            {
+                dirMenor = GetReverse(Direction);
+                UpdateColRow();
+            }
+
+            switch (dirMenor)
+            {
+                case Direction.Up:
+                    Direction = Direction.Up;
+                    SetPositionX(Board.OffsetX + MazeCol * Board.Pixel);
+                    break;
+                case Direction.Left:
+                    Direction = Direction.Left;
+                    SetPositionY(Board.OffsetY + MazeRow * Board.Pixel);
+                    break;
+                case Direction.Right:
+                    Direction = Direction.Right;
+                    SetPositionY(Board.OffsetY + MazeRow * Board.Pixel);
+                    break;
+                case Direction.Down:
+                    Direction = Direction.Down;
+                    SetPositionX(Board.OffsetX + MazeCol * Board.Pixel);
+                    break;
+                default:
+                    break;
+            }
+
+            LastCell[0] = MazeRow;
+            LastCell[1] = MazeCol;
         }
     }
 }
