@@ -14,7 +14,8 @@ namespace Pac_Man
             TimeToStartMove = timeToStartMove;
             OutRoom = outOfRoom;
             CanUseDoor = canUseDoor;
-            LastCell = new int[2] {MazeRow, MazeCol};
+            LastCell[0] = MazeRow;
+            LastCell[1] = MazeCol;
         }
         public Color Color { get; set; }
         public bool CanMove { get; set; } = false;
@@ -22,12 +23,17 @@ namespace Pac_Man
         public bool CanUseDoor { get; set; }
         public float TimeToStartMove { get; set; }
         public Direction InitialDirection { get; set; }
-        public int[] LastCell {  get; set; }
+        public int[] LastCell {  get; set; } = new int[2];
 
         public void Draw()
         {
             Raylib.DrawCircleSector(new Vector2(Bounds.X + (Bounds.Width / 2), Bounds.Y + (Bounds.Height / 2)), (Board.Pixel / 2), 180, 360, 1, Color);
             Raylib.DrawRectangleV(new Vector2(Bounds.X, Bounds.Y + (Bounds.Height / 2)), new Vector2(Bounds.Width, Bounds.Height / 2), Color);
+
+            Raylib.DrawRectangleV(new Vector2(Bounds.X + (Bounds.Width / 6), Bounds.Y + (Bounds.Height / 4)), new Vector2(Bounds.Width / 8, Bounds.Height / 8), Color.Black);
+            Raylib.DrawRectangleV(new Vector2(Bounds.X + (Bounds.Width / 2), Bounds.Y + (Bounds.Height / 4)), new Vector2(Bounds.Width / 8, Bounds.Height / 8), Color.Black);
+
+            Raylib.DrawLineV(new Vector2(Bounds.X+(Bounds.Width/6), Bounds.Y+(Bounds.Height/5)*3), new Vector2(Bounds.X+(Bounds.Width/3)*2, Bounds.Y+(Bounds.Height/5)*3), Color.Black);
         }
 
         public void StartMoveCounter(float deltaTime)
