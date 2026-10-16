@@ -5,7 +5,7 @@ namespace Pac_Man
 {
     public class Ghost : Entity
     {
-        public Ghost(char key, float speed, Board board, Color color, Direction dir, float timeToStartMove, bool outOfRoom = false, bool canUseDoor = false)
+        public Ghost(char key, float speed, Board board, Color color, Direction dir, float timeToStartMove, char cornerChar, bool outOfRoom = false, bool canUseDoor = false)
             : base(key, speed, board)
         {
             Color = color;
@@ -19,6 +19,7 @@ namespace Pac_Man
             var doorPos = Board.GetInitialPosition('/');
             DoorPosition[0] = doorPos[0];
             DoorPosition[1] = doorPos[1];
+            ScatterCorner = new ScatterCorner(Board.GetInitialPosition(cornerChar)[0], Board.GetInitialPosition(cornerChar)[1]);
         }
         public Color Color { get; set; }
         public bool CanMove { get; set; } = false;
@@ -28,6 +29,7 @@ namespace Pac_Man
         public Direction InitialDirection { get; set; }
         public int[] LastCell {  get; set; } = new int[2];
         public int[] DoorPosition {  get; set; } = new int[2];
+        public ScatterCorner ScatterCorner {  get; set; }
 
         public void Draw()
         {
@@ -86,6 +88,23 @@ namespace Pac_Man
                 Move(maze, CanUseDoor, deltaTime);
                 UpdateColRow();
             }
+        }
+
+        public (int row, int col) GetTarget(Entity entity, int n)
+        {
+            int mazeCol = entity.MazeCol;
+            int mazeRow = entity.MazeRow;
+
+            if (entity.Direction == Direction.Up)
+                mazeRow = mazeRow - n;
+            if (entity.Direction == Direction.Down)
+                mazeRow = mazeRow + n;
+            if (entity.Direction == Direction.Left)
+                mazeCol = mazeCol - n;
+            if (entity.Direction == Direction.Right)
+                mazeCol = mazeCol + n;
+
+            return (mazeRow, mazeCol);
         }
 
         public void ChooseDirection(Maze maze, int targetRow, int targetCol)
@@ -150,11 +169,8 @@ namespace Pac_Man
             }
 
             if (dirMenor == Direction.None)
-            {
                 dirMenor = GetReverse(Direction);
-                UpdateColRow();
-            }
-
+            
             switch (dirMenor)
             {
                 case Direction.Up:
@@ -180,5 +196,17 @@ namespace Pac_Man
             LastCell[0] = MazeRow;
             LastCell[1] = MazeCol;
         }
+    }
+
+    public class ScatterCorner
+    {
+        public ScatterCorner(int row, int col)
+        {
+            Row = row;
+            Col = col;
+        }
+
+        public int Row {  get; set; }
+        public int Col {  get; set; }
     }
 }

@@ -1,33 +1,35 @@
 ﻿# Pac-Man
 
-  Bugs
+  Mejoras antes de seguir
 
-  1. Inky se comporta igual que Pinky (Game.cs:95)
-  var targetInky = GetTarget(Player, 4);   // mismo objetivo que Pinky
-  Nada llama a GetTargetInky(). Además, ese método sigue con el error de la revisión pasada: solo duplica el vector en
-  el eje en que se mueve el jugador. El otro eje se queda en la posición del jugador. Y si el jugador está en None,
-  ignora a Blinky por completo.
+ ✅ - Esquinas de scatter: el siguiente paso, scatter, necesita una esquina para cada fantasma. Tienes dos opciones:
+    - Pasarla como parámetro del constructor de Ghost, por ejemplo una propiedad ScatterCorner.
+    - Usar marcadores 1–4 en el mapa, todos consistentes.
 
-  La fórmula correcta usa los dos ejes siempre:
-  - pivote = GetTarget(Player, 2)
-  - target = 2 * pivote - Blinky, tanto en filas como en columnas.
+    En el original las esquinas de scatter están fuera del laberinto, para que el fantasma dé vueltas alrededor de un
+    bloque. Con una casilla dentro también funciona.
+  - Lo pendiente de la revisión anterior cobra importancia ahora:
+    - Mover el cálculo de objetivos a Ghost, con un GetChaseTarget() o un Func. Scatter y frightened solo cambian el
+      objetivo, así que MoveGhost quedaría en un foreach.
+    - Compactar ChooseDirection en un ciclo.
+  - Opcional, para ser fiel al original: cuando Pac-Man mira hacia arriba, el original tiene un bug y el objetivo de
+    Pinky (4 adelante) y el pivote de Inky (2 adelante) también se mueven la misma cantidad a la izquierda. Solo si
+    quieres replicarlo.
 
-  Así GetTargetInky puede reutilizar GetTarget y se reduce a dos líneas.
+  Lo que sigue
 
-  2. Hay un UpdateColRow() que sobra en la reversa (Ghost.cs:155)
-  Se ejecuta antes de cambiar Direction, así que recalcula la celda con la dirección vieja y no hace nada útil. En el
-  mejor caso es inofensivo y en el peor mueve MazeRow/MazeCol en el frame en que das la vuelta. Bórralo: el switch de
-  abajo ya alinea la posición.
+  1. Simplificar Clyde como en la propuesta (es corto).
+  2. Colisión Pac-Man–fantasma, vidas y Reset() en Ghost y Player.
+  3. Alternar scatter/chase por tiempo, con reversa forzada al cambiar de modo.
+  4. Frightened, y las pantallas de victoria y Game Over.
 
-  3. Clyde todavía persigue igual que Blinky (Game.cs:97). Ya lo tienes como pendiente; lo menciono para que no se te
-  olvide.
 
   Mejoras (no son urgentes)
 
   - Mueve el cálculo de objetivos fuera de Game. GetTarget y GetTargetInky son lógica de los fantasmas. Una opción es
     darle a Ghost un Func<int[]> (o un método virtual GetChaseTarget()) para que Update sea solo foreach (var g in
     ghosts) g.BaseMove(...). Te va a servir mucho para scatter y frightened, porque ahí solo cambia el objetivo.
-  - Usa (int row, int col) o un struct en vez de int[2]. target[0]/target[1], LastCell y DoorPosition son fáciles de
+  ✅- Usa (int row, int col) o un struct en vez de int[2]. target[0]/target[1], LastCell y DoorPosition son fáciles de
     confundir (fila o columna), y cada llamada a GetTarget crea un arreglo nuevo en cada frame.
   - Puedes compactar ChooseDirection. Los cuatro bloques casi idénticos caben en un ciclo sobre {Up, Left, Down, Right}:
     ese orden ya da el desempate correcto, con un helper Neighbor(dir) y GetReverse(Direction) para descartar la
@@ -38,17 +40,6 @@
   - El túnel funciona por el orden de las llamadas. Probablemente el teletransporte de Move ocurre antes de que el
     fantasma llegue al centro de la celda del borde. Si un día cambias ese orden, el fantasma podría encontrarse sin
     salidas en la columna 0 y darse la vuelta.
-
-  Lo que sigue
-
-  1. Arreglar el objetivo de Inky (bug 1).
-  2. Clyde: si la distancia al jugador es mayor a 8 casillas (compara 64 contra la distancia al cuadrado), su objetivo
-     es el jugador; si no, su esquina de abajo a la izquierda.
-  3. Colisión Pac-Man–fantasma, vidas y reinicio de posiciones. Para el reinicio tendrás que restaurar TimeToStartMove,
-     OutRoom, CanUseDoor, LastCell y Direction, así que conviene un método Reset() en Ghost y otro en Player.
-  4. Scatter/chase por tiempo, con reversa forzada al cambiar de modo. Vas a tener que saltarte el Direction != reversa
-     solo en ese frame.
-  5. Frightened, pantallas de victoria y Game Over.
 
   IA de los fantasmas. En cada intersección, el fantasma elige la casilla vecina más cercana a un objetivo, y no puede dar media vuelta. El objetivo cambia según el fantasma:
      - Blinky: la casilla del jugador.

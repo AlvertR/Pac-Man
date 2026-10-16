@@ -13,10 +13,10 @@ namespace Pac_Man
             Board = new Board(WidthWindow, HeightWindow);
             Maze = new Maze(Board);
             Player = new Player('p', 100, Board);
-            Blinky = new Ghost('b', 100, Board, Color.Red, Direction.Left, 0f, true, false);
-            Inky = new Ghost('i', 100, Board, Color.SkyBlue, Direction.Right, 10f, false, true);
-            Pinky = new Ghost('r', 100, Board, Color.Pink, Direction.Left, 5f, false, true);
-            Clyde = new Ghost('c', 100, Board, Color.Orange, Direction.Right, 15f, false, true);
+            Blinky = new Ghost('b', 100, Board, Color.Red, Direction.Left, 0f, '1', true, false);
+            Pinky = new Ghost('r', 100, Board, Color.Pink, Direction.Left, 5f,'2', false, true);
+            Inky = new Ghost('i', 100, Board, Color.SkyBlue, Direction.Right, 10f, '3', false, true);
+            Clyde = new Ghost('c', 100, Board, Color.Orange, Direction.Right, 15f, '4', false, true);
         }
         public int HeightWindow { get; private set; }
         public int WidthWindow { get; private set; }
@@ -89,12 +89,7 @@ namespace Pac_Man
             switch (Status) {
                 case GameStatus.Playing:
                     MovementPlayer();
-                    Blinky.BaseMove(DeltaTime, Maze, Player.MazeRow, Player.MazeCol);
-                    var targetPinky = GetTarget(Player, 4);
-                    Pinky.BaseMove(DeltaTime, Maze, targetPinky[0], targetPinky[1]);
-                    var targetInky = GetTargetInky();
-                    Inky.BaseMove(DeltaTime, Maze, targetInky[0], targetInky[1]);
-                    Clyde.BaseMove(DeltaTime, Maze, Player.MazeRow, Player.MazeCol);
+                    MoveGhost();
                     break;
                 case GameStatus.Start:
                 case GameStatus.Paused:
@@ -136,46 +131,26 @@ namespace Pac_Man
             Player.UpdatePoints(Maze);
         }
 
-        public int[] GetTarget(Entity entity, int n)
+        public (int row, int col) GetTargetInky()
         {
-            int[] target = new int[2];
-            int mazeCol = entity.MazeCol;
-            int mazeRow = entity.MazeRow;
-
-            if (entity.Direction == Direction.Up)
-                mazeRow = mazeRow - n;
-            if (entity.Direction == Direction.Down)
-                mazeRow = mazeRow + n;
-            if (entity.Direction == Direction.Left)
-                mazeCol = mazeCol - n;
-            if (entity.Direction == Direction.Right)
-                mazeCol = mazeCol + n;
-
-            target[0] = mazeRow;
-            target[1] = mazeCol;
-
-            return target;
+            var pivote = Inky.GetTarget(Player, 2);
+            return ((2 * pivote.row - Blinky.MazeRow), (2 * pivote.col - Blinky.MazeCol));
         }
 
-        public int[] GetTargetInky()
+        public void MoveGhost()
         {
-            int[] target = new int[2];
-            int mazeCol = Player.MazeCol;
-            int mazeRow = Player.MazeRow;
+            Blinky.BaseMove(DeltaTime, Maze, Player.MazeRow, Player.MazeCol);
 
-            if (Player.Direction == Direction.Up)
-                mazeRow = 2 * (mazeRow - 2) - Blinky.MazeRow;
-            if (Player.Direction == Direction.Down)
-                mazeRow = 2 * (mazeRow + 2) - Blinky.MazeRow;
-            if (Player.Direction == Direction.Left)
-                mazeCol = 2 * (mazeCol - 2) - Blinky.MazeCol;
-            if (Player.Direction == Direction.Right)
-                mazeCol = 2 * (mazeCol + 2) - Blinky.MazeCol;
+            var targetPinky = Pinky.GetTarget(Player, 4);
+            Pinky.BaseMove(DeltaTime, Maze, targetPinky.row, targetPinky.col);
 
-            target[0] = mazeRow;
-            target[1] = mazeCol;
+            var targetInky = GetTargetInky();
+            Inky.BaseMove(DeltaTime, Maze, targetInky.row, targetInky.col);
 
-            return target;
+            int dx = Clyde.MazeCol - Player.MazeCol;
+            int dy = Clyde.MazeRow - Player.MazeRow;
+            (int row, int col) targetClyde = dx * dx + dy * dy > 64 ? (Player.MazeRow, Player.MazeCol) : (Clyde.ScatterCorner.Row, Clyde.ScatterCorner.Col);
+            Clyde.BaseMove(DeltaTime, Maze, targetClyde.row, targetClyde.col);
         }
     }
 }
