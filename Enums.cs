@@ -24,7 +24,14 @@
         Start,
         Playing,
         Paused,
+        DeadPlayer,
         GameOver,
         End,
+    }
+
+    public enum GhostStatus
+    {
+        normal,
+        scared,
     }
 }

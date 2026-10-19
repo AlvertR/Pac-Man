@@ -9,10 +9,12 @@ namespace Pac_Man
             : base(key, speed, board)
         {
             Points = 0;
+            Lifes = 3;
             Direction = Direction.Left;
         }
         public Direction DesiredDirection { get; set; } = Direction.None;
         public int Points {  get; set; }
+        public int Lifes {  get; set; }
 
         public void Draw()
         {
@@ -28,6 +30,11 @@ namespace Pac_Man
                 Raylib.DrawCircleSector(new Vector2(Bounds.X + (Bounds.Width / 2), Bounds.Y + (Bounds.Height / 2)), (Board.Pixel / 2), 135, 405, 1, Color.Yellow);
             if(Direction == Direction.Up)
                 Raylib.DrawCircleSector(new Vector2(Bounds.X + (Bounds.Width / 2), Bounds.Y + (Bounds.Height / 2)), (Board.Pixel / 2), 225, -45, 1, Color.Yellow);
+
+            for (int l = 0; l < Lifes; l++)
+            {
+                Raylib.DrawCircleSector(new Vector2(Board.OffsetX + ((l+1)*Board.Pixel) , Board.OffsetY + (Board.Pixel * (Board.Rows +1))), (Board.Pixel / 2), 45, 315, 1, Color.Yellow);
+            }
         }
 
         public void HandleInput()
@@ -42,7 +49,7 @@ namespace Pac_Man
                 DesiredDirection = Direction.Right;
         }
 
-        public void UpdatePoints(Maze maze)
+        public bool UpdatePoints(Maze maze)
         {
             if ((MazeCol > -1 && MazeCol < maze.Cells.GetLength(1))
                 && (MazeRow > -1 && MazeRow < maze.Cells.GetLength(0)))
@@ -57,8 +64,16 @@ namespace Pac_Man
                 {
                     maze.Cells[MazeRow, MazeCol] = CellType.Path;
                     Points += 50;
+                    return true;
                 }
             }
+            return false;
+        }
+
+        public bool isPowerPelletCell(Maze maze)
+        {
+            var currentCell = maze.Cells[MazeRow, MazeCol];
+            return currentCell == CellType.PowerPellet;
         }
 
         public void UpdateDirection(Maze maze, float deltaTime)

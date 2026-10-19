@@ -141,5 +141,20 @@ namespace Pac_Man
                     SetPositionY(Board.OffsetY + MazeRow * Board.Pixel);
             }
         }
+    
+        public void ResetPosition(char key)
+        {
+            var spritePos = Board.GetInitialPosition(key);
+            MazeCol = spritePos[1];
+            MazeRow = spritePos[0];
+            float x0 = Board.OffsetX + MazeCol * Board.Pixel;
+            float y0 = Board.OffsetY + MazeRow * Board.Pixel;
+            float x1 = Board.OffsetX + (MazeCol + 1) * Board.Pixel;
+            float y1 = Board.OffsetY + (MazeRow + 1) * Board.Pixel;
+            Bounds = new Rectangle(x0, y0, x1 - x0, y1 - y0);
+            CenterX = false;
+            CenterY = false;
+            Step = 0f;
+        }
     }
 }

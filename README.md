@@ -26,7 +26,7 @@
 
   Mejoras (no son urgentes)
 
-  - Mueve el cálculo de objetivos fuera de Game. GetTarget y GetTargetInky son lógica de los fantasmas. Una opción es
+  ??- Mueve el cálculo de objetivos fuera de Game. GetTarget y GetTargetInky son lógica de los fantasmas. Una opción es
     darle a Ghost un Func<int[]> (o un método virtual GetChaseTarget()) para que Update sea solo foreach (var g in
     ghosts) g.BaseMove(...). Te va a servir mucho para scatter y frightened, porque ahí solo cambia el objetivo.
   ✅- Usa (int row, int col) o un struct en vez de int[2]. target[0]/target[1], LastCell y DoorPosition son fáciles de

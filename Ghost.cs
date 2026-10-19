@@ -20,26 +20,62 @@ namespace Pac_Man
             DoorPosition[0] = doorPos[0];
             DoorPosition[1] = doorPos[1];
             ScatterCorner = new ScatterCorner(Board.GetInitialPosition(cornerChar)[0], Board.GetInitialPosition(cornerChar)[1]);
+            Status = GhostStatus.normal;
+            TimeScared = 10f;
         }
         public Color Color { get; set; }
         public bool CanMove { get; set; } = false;
         public bool OutRoom { get; set; }
         public bool CanUseDoor { get; set; }
         public float TimeToStartMove { get; set; }
+        public float TimeScared { get; set; }
         public Direction InitialDirection { get; set; }
         public int[] LastCell {  get; set; } = new int[2];
         public int[] DoorPosition {  get; set; } = new int[2];
         public ScatterCorner ScatterCorner {  get; set; }
+        public GhostStatus Status { get; set; }
 
         public void Draw()
         {
-            Raylib.DrawCircleSector(new Vector2(Bounds.X + (Bounds.Width / 2), Bounds.Y + (Bounds.Height / 2)), (Board.Pixel / 2), 180, 360, 1, Color);
-            Raylib.DrawRectangleV(new Vector2(Bounds.X, Bounds.Y + (Bounds.Height / 2)), new Vector2(Bounds.Width, Bounds.Height / 2), Color);
+            if (Status == GhostStatus.normal)
+            {
+                Raylib.DrawCircleSector(new Vector2(Bounds.X + (Bounds.Width / 2), Bounds.Y + (Bounds.Height / 2)), (Board.Pixel / 2), 180, 360, 1, Color);
+                Raylib.DrawRectangleV(new Vector2(Bounds.X, Bounds.Y + (Bounds.Height / 2)), new Vector2(Bounds.Width, Bounds.Height / 2), Color);
 
-            Raylib.DrawRectangleV(new Vector2(Bounds.X + (Bounds.Width / 6), Bounds.Y + (Bounds.Height / 4)), new Vector2(Bounds.Width / 8, Bounds.Height / 8), Color.Black);
-            Raylib.DrawRectangleV(new Vector2(Bounds.X + (Bounds.Width / 2), Bounds.Y + (Bounds.Height / 4)), new Vector2(Bounds.Width / 8, Bounds.Height / 8), Color.Black);
+                Raylib.DrawRectangleV(new Vector2(Bounds.X + (Bounds.Width / 6), Bounds.Y + (Bounds.Height / 4)), new Vector2(Bounds.Width / 8, Bounds.Height / 8), Color.Black);
+                Raylib.DrawRectangleV(new Vector2(Bounds.X + (Bounds.Width / 2), Bounds.Y + (Bounds.Height / 4)), new Vector2(Bounds.Width / 8, Bounds.Height / 8), Color.Black);
 
-            Raylib.DrawLineV(new Vector2(Bounds.X+(Bounds.Width/6), Bounds.Y+(Bounds.Height/5)*3), new Vector2(Bounds.X+(Bounds.Width/3)*2, Bounds.Y+(Bounds.Height/5)*3), Color.Black);
+                Raylib.DrawLineV(new Vector2(Bounds.X + (Bounds.Width / 6), Bounds.Y + (Bounds.Height / 5) * 3), new Vector2(Bounds.X + (Bounds.Width / 3) * 2, Bounds.Y + (Bounds.Height / 5) * 3), Color.Black);
+            }
+            else
+            {
+                Console.WriteLine("draw scared");
+                Raylib.DrawCircleSector(new Vector2(Bounds.X + (Bounds.Width / 2), Bounds.Y + (Bounds.Height / 2)), (Board.Pixel / 2), 180, 360, 1, Color.DarkBlue);
+                Raylib.DrawRectangleV(new Vector2(Bounds.X, Bounds.Y + (Bounds.Height / 2)), new Vector2(Bounds.Width, Bounds.Height / 2), Color.DarkBlue);
+
+                Raylib.DrawRectangleV(new Vector2(Bounds.X + (Bounds.Width / 6), Bounds.Y + (Bounds.Height / 4)), new Vector2(Bounds.Width / 8, Bounds.Height / 8), Color.Yellow);
+                Raylib.DrawRectangleV(new Vector2(Bounds.X + (Bounds.Width / 2), Bounds.Y + (Bounds.Height / 4)), new Vector2(Bounds.Width / 8, Bounds.Height / 8), Color.Yellow);
+
+                Raylib.DrawLineV(new Vector2(Bounds.X + (Bounds.Width / 6), Bounds.Y + (Bounds.Height / 5) * 3), new Vector2(Bounds.X + (Bounds.Width / 3) * 2, Bounds.Y + (Bounds.Height / 5) * 3), Color.Yellow);
+            }
+        }
+
+        public void SetScared()
+            => Status = GhostStatus.scared;
+
+        public void SetNormal()
+            => Status = GhostStatus.normal;
+
+        public void Reset(char key, float timeToStartMove, bool outOfRoom = false, bool canUseDoor = false)
+        {
+            ResetPosition(key);
+            SetNormal();
+            Direction = InitialDirection;
+            TimeToStartMove = timeToStartMove;
+            OutRoom = outOfRoom;
+            CanUseDoor = canUseDoor;
+            LastCell[0] = MazeRow;
+            LastCell[1] = MazeCol;
         }
 
         public void StartMoveCounter(float deltaTime)
@@ -48,6 +84,19 @@ namespace Pac_Man
                 CanMove = true;
             else
                 TimeToStartMove -= deltaTime;
+        }
+
+        public void CheckScaredCounter(float deltaTime)
+        {
+            if (TimeScared <= 0)
+            {
+                Console.WriteLine("scared end");
+                SetNormal();
+                TimeScared = 10f;
+                Speed = Speed * 1.25f;
+            }
+            else
+                TimeScared -= deltaTime;
         }
 
         public void LeaveRoom()
@@ -84,7 +133,8 @@ namespace Pac_Man
                     LeaveRoom();
                 else
                     ChooseDirection(maze, targetRow, targetCol);
-
+                if (Status == GhostStatus.scared)
+                    CheckScaredCounter(deltaTime);
                 Move(maze, CanUseDoor, deltaTime);
                 UpdateColRow();
             }
