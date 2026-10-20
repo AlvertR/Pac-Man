@@ -47,9 +47,9 @@ namespace Pac_Man
 
                 Raylib.DrawLineV(new Vector2(Bounds.X + (Bounds.Width / 6), Bounds.Y + (Bounds.Height / 5) * 3), new Vector2(Bounds.X + (Bounds.Width / 3) * 2, Bounds.Y + (Bounds.Height / 5) * 3), Color.Black);
             }
-            else
+            else if (Status == GhostStatus.scared)
             {
-                Console.WriteLine("draw scared");
+                //Console.WriteLine("draw scared");
                 Raylib.DrawCircleSector(new Vector2(Bounds.X + (Bounds.Width / 2), Bounds.Y + (Bounds.Height / 2)), (Board.Pixel / 2), 180, 360, 1, Color.DarkBlue);
                 Raylib.DrawRectangleV(new Vector2(Bounds.X, Bounds.Y + (Bounds.Height / 2)), new Vector2(Bounds.Width, Bounds.Height / 2), Color.DarkBlue);
 
@@ -57,6 +57,11 @@ namespace Pac_Man
                 Raylib.DrawRectangleV(new Vector2(Bounds.X + (Bounds.Width / 2), Bounds.Y + (Bounds.Height / 4)), new Vector2(Bounds.Width / 8, Bounds.Height / 8), Color.Yellow);
 
                 Raylib.DrawLineV(new Vector2(Bounds.X + (Bounds.Width / 6), Bounds.Y + (Bounds.Height / 5) * 3), new Vector2(Bounds.X + (Bounds.Width / 3) * 2, Bounds.Y + (Bounds.Height / 5) * 3), Color.Yellow);
+            }
+            else
+            {
+                Raylib.DrawRectangleV(new Vector2(Bounds.X + (Bounds.Width / 6), Bounds.Y + (Bounds.Height / 4)), new Vector2(Bounds.Width / 8, Bounds.Height / 8), Color.White);
+                Raylib.DrawRectangleV(new Vector2(Bounds.X + (Bounds.Width / 2), Bounds.Y + (Bounds.Height / 4)), new Vector2(Bounds.Width / 8, Bounds.Height / 8), Color.White);
             }
         }
 
@@ -76,6 +81,8 @@ namespace Pac_Man
             CanUseDoor = canUseDoor;
             LastCell[0] = MazeRow;
             LastCell[1] = MazeCol;
+            CanMove = false;
+            Speed = 80;
         }
 
         public void StartMoveCounter(float deltaTime)
@@ -90,13 +97,20 @@ namespace Pac_Man
         {
             if (TimeScared <= 0)
             {
-                Console.WriteLine("scared end");
+                //Console.WriteLine("scared end");
                 SetNormal();
                 TimeScared = 10f;
-                Speed = Speed * 1.25f;
+                Speed = 80f;
             }
             else
                 TimeScared -= deltaTime;
+        }
+
+        public bool isInitialCell(int row, int col)
+        {
+            if(MazeRow == row && MazeCol == col) 
+                return true;
+            return false;
         }
 
         public void LeaveRoom()
@@ -124,7 +138,7 @@ namespace Pac_Man
             }
         }
 
-        public void BaseMove(float deltaTime, Maze maze, int targetRow, int targetCol)
+        public void BaseMove(float deltaTime, Maze maze, int targetRow, int targetCol, char key)
         {
             StartMoveCounter(deltaTime);
             if (CanMove)
@@ -132,7 +146,28 @@ namespace Pac_Man
                 if (!OutRoom)
                     LeaveRoom();
                 else
-                    ChooseDirection(maze, targetRow, targetCol);
+                {
+                    if (Status == GhostStatus.dead)
+                    {
+                        var basePos = Board.GetInitialPosition(key);
+                        if (isInitialCell(basePos[0], basePos[1]))
+                        {
+                            //ResetPosition(key);
+                            SetNormal();
+                            Direction = InitialDirection;
+                            TimeToStartMove = 0f;
+                            OutRoom = false;
+                            CanUseDoor = true;
+                            LastCell[0] = MazeRow;
+                            LastCell[1] = MazeCol;
+                            CanMove = true;
+                            Speed = 80;
+                        }
+                        ChooseDirection(maze, basePos[0], basePos[1]);
+                    }
+                    else
+                        ChooseDirection(maze, targetRow, targetCol);
+                }
                 if (Status == GhostStatus.scared)
                     CheckScaredCounter(deltaTime);
                 Move(maze, CanUseDoor, deltaTime);

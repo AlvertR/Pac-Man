@@ -1,4 +1,5 @@
 ﻿using Raylib_cs;
+using System.Numerics;
 
 namespace Pac_Man
 {
@@ -156,43 +157,87 @@ namespace Pac_Man
 
         public void MoveGhost()
         {
-            Blinky.BaseMove(DeltaTime, Maze, Player.MazeRow, Player.MazeCol);
+            Blinky.BaseMove(DeltaTime, Maze, Player.MazeRow, Player.MazeCol, 'b');
 
             var targetPinky = Pinky.GetTarget(Player, 4);
-            Pinky.BaseMove(DeltaTime, Maze, targetPinky.row, targetPinky.col);
+            Pinky.BaseMove(DeltaTime, Maze, targetPinky.row, targetPinky.col, 'r');
 
             var targetInky = GetTargetInky();
-            Inky.BaseMove(DeltaTime, Maze, targetInky.row, targetInky.col);
+            Inky.BaseMove(DeltaTime, Maze, targetInky.row, targetInky.col, 'i');
 
             int dx = Clyde.MazeCol - Player.MazeCol;
             int dy = Clyde.MazeRow - Player.MazeRow;
             (int row, int col) targetClyde = dx * dx + dy * dy > 64 ? (Player.MazeRow, Player.MazeCol) : (Clyde.ScatterCorner.Row, Clyde.ScatterCorner.Col);
-            Clyde.BaseMove(DeltaTime, Maze, targetClyde.row, targetClyde.col);
+            Clyde.BaseMove(DeltaTime, Maze, targetClyde.row, targetClyde.col, 'c');
         }
 
         public void CheckCollision()
         {
-            if ((Blinky.Status == GhostStatus.normal && Raylib.CheckCollisionRecs(Player.Bounds, Blinky.Bounds))
-                || (Pinky.Status == GhostStatus.normal && Raylib.CheckCollisionRecs(Player.Bounds, Pinky.Bounds))
-                || (Inky.Status == GhostStatus.normal && Raylib.CheckCollisionRecs(Player.Bounds, Inky.Bounds))
-                || (Clyde.Status == GhostStatus.normal && Raylib.CheckCollisionRecs(Player.Bounds, Clyde.Bounds)))
+            if ((Blinky.Status == GhostStatus.normal && Raylib.CheckCollisionCircles(new Vector2(Player.Bounds.X + (Player.Bounds.Width/2), Player.Bounds.Y + (Player.Bounds.Height/2)), (Board.Pixel / 2), new Vector2(Blinky.Bounds.X + (Blinky.Bounds.Width / 2), Blinky.Bounds.Y + (Blinky.Bounds.Height / 2)), (Board.Pixel / 2)))
+                || (Pinky.Status == GhostStatus.normal && Raylib.CheckCollisionCircles(new Vector2(Player.Bounds.X + (Player.Bounds.Width / 2), Player.Bounds.Y + (Player.Bounds.Height / 2)), (Board.Pixel / 2), new Vector2(Pinky.Bounds.X + (Pinky.Bounds.Width / 2), Pinky.Bounds.Y + (Pinky.Bounds.Height / 2)), (Board.Pixel / 2)))
+                || (Inky.Status == GhostStatus.normal && Raylib.CheckCollisionCircles(new Vector2(Player.Bounds.X + (Player.Bounds.Width / 2), Player.Bounds.Y + (Player.Bounds.Height / 2)), (Board.Pixel / 2), new Vector2(Inky.Bounds.X + (Inky.Bounds.Width / 2), Inky.Bounds.Y + (Inky.Bounds.Height / 2)), (Board.Pixel / 2)))
+                || (Clyde.Status == GhostStatus.normal && Raylib.CheckCollisionCircles(new Vector2(Player.Bounds.X + (Player.Bounds.Width / 2), Player.Bounds.Y + (Player.Bounds.Height / 2)), (Board.Pixel / 2), new Vector2(Clyde.Bounds.X + (Clyde.Bounds.Width / 2), Clyde.Bounds.Y + (Clyde.Bounds.Height / 2)), (Board.Pixel / 2))))
             {
                 Status = GameStatus.DeadPlayer;
                 Player.Lifes--;
+            }
+            if ((Blinky.Status == GhostStatus.scared && Raylib.CheckCollisionCircles(new Vector2(Player.Bounds.X + (Player.Bounds.Width / 2), Player.Bounds.Y + (Player.Bounds.Height / 2)), (Board.Pixel / 2), new Vector2(Blinky.Bounds.X + (Blinky.Bounds.Width / 2), Blinky.Bounds.Y + (Blinky.Bounds.Height / 2)), (Board.Pixel / 2))))
+            {
+                Blinky.Status = GhostStatus.dead;
+                Blinky.Speed = Blinky.Speed * 4;
+                Blinky.CanUseDoor = false;
+                Player.Points += 100;
+            }
+            if ((Pinky.Status == GhostStatus.scared && Raylib.CheckCollisionCircles(new Vector2(Player.Bounds.X + (Player.Bounds.Width / 2), Player.Bounds.Y + (Player.Bounds.Height / 2)), (Board.Pixel / 2), new Vector2(Pinky.Bounds.X + (Pinky.Bounds.Width / 2), Pinky.Bounds.Y + (Pinky.Bounds.Height / 2)), (Board.Pixel / 2))))
+            {
+                Pinky.Status = GhostStatus.dead;
+                Pinky.Speed = Pinky.Speed * 4;
+                Pinky.CanUseDoor = true;
+                Player.Points += 100;
+            }
+            if ((Inky.Status == GhostStatus.scared && Raylib.CheckCollisionCircles(new Vector2(Player.Bounds.X + (Player.Bounds.Width / 2), Player.Bounds.Y + (Player.Bounds.Height / 2)), (Board.Pixel / 2), new Vector2(Inky.Bounds.X + (Inky.Bounds.Width / 2), Inky.Bounds.Y + (Inky.Bounds.Height / 2)), (Board.Pixel / 2))))
+            {
+                Inky.Status = GhostStatus.dead;
+                Inky.Speed = Inky.Speed * 4;
+                Inky.CanUseDoor = true;
+                Player.Points += 100;
+            }
+            if ((Clyde.Status == GhostStatus.scared && Raylib.CheckCollisionCircles(new Vector2(Player.Bounds.X + (Player.Bounds.Width / 2), Player.Bounds.Y + (Player.Bounds.Height / 2)), (Board.Pixel / 2), new Vector2(Clyde.Bounds.X + (Clyde.Bounds.Width / 2), Clyde.Bounds.Y + (Clyde.Bounds.Height / 2)), (Board.Pixel / 2))))
+            {
+                Clyde.Status = GhostStatus.dead;
+                Clyde.Speed = Clyde.Speed * 4;
+                Clyde.CanUseDoor = true;
+                Player.Points += 100;
             }
         }
 
         public void setScared()
         {
-            Console.WriteLine("scared start");
-            Blinky.SetScared();
-            Blinky.Speed = Blinky.Speed * 0.8f;
-            Pinky.SetScared();
-            Pinky.Speed = Pinky.Speed * 0.8f;
-            Inky.SetScared();
-            Inky.Speed = Inky.Speed * 0.8f;
-            Clyde.SetScared();
-            Clyde.Speed = Clyde.Speed * 0.8f;
+            //Console.WriteLine("scared start");
+            if (Blinky.OutRoom)
+            {
+                Blinky.SetScared();
+                Blinky.TimeScared = 10f;
+                Blinky.Speed = Blinky.Speed * 0.8f;
+            }
+            if (Pinky.OutRoom)
+            {
+                Pinky.SetScared();
+                Pinky.TimeScared = 10f;
+                Pinky.Speed = Pinky.Speed * 0.8f;
+            }
+            if (Inky.OutRoom)
+            {
+                Inky.SetScared();
+                Inky.TimeScared = 10f;
+                Inky.Speed = Inky.Speed * 0.8f;
+            }
+            if (Clyde.OutRoom)
+            {
+                Clyde.SetScared();
+                Clyde.TimeScared = 10f;
+                Clyde.Speed = Clyde.Speed * 0.8f;
+            }
         }
 
         public void ResetPositions()
