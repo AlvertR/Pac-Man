@@ -1,110 +1,74 @@
 ﻿# Pac-Man
-  Bugs
+ Bugs
 
- ✅ 1. La velocidad se acumula en setScared (Game.cs:217, 223, 229, 235)
-  Speed = Speed * 0.8f multiplica sobre la velocidad que el fantasma tenga en ese momento:
-  - Si comes un segundo power pellet mientras ya están asustados, queda en 80 → 64 → 51.2, y baja más con cada pellet.
-  - Al comerlo, Speed * 4 (Game.cs:184…) parte de ese valor ya reducido, así que la velocidad de los ojos cambia según
-    cuántos pellets comiste.
+  1. Un fantasma asustado puede quedarse atorado para siempre (Ghost.cs:184-187)
+  Al asustarse, el fantasma da media vuelta, pero LastCell no se invalida. El problema aparece cuando acaba de girar en
+  un cruce y todavía no sale de esa casilla:
+  - Iba hacia la derecha, giró hacia arriba en (r,c) y LastCell = (r,c). Mientras sube, MazeRow sigue siendo r porque
+    redondea con Ceiling.
+  - Comes un power pellet y su dirección pasa a Down. Si abajo hay pared, Move lo deja fijo en el centro de la celda.
+  - En el siguiente frame, ChooseDirection hace return porque isLastCell es true, y Move sigue chocando con la pared.
+  - Se queda ahí para siempre, también cuando se le pasa el susto.
 
-  Usa constantes fijas, por ejemplo NormalSpeed = 80, FrightSpeed = 50 y EyesSpeed = 200, y asígnalas en lugar de
-  multiplicar. Hoy el 80 está repetido en Ghost.cs:84, Ghost.cs:101 y Ghost.cs:161.
+  Esto puede pasar durante unos 0.3 s cada vez que un fantasma gira en un cruce en forma de T o en una esquina, así que
+  no es raro.
 
-  ✅2. Un power pellet revive a los ojos (Game.cs:213-236)
-  setScared solo revisa OutRoom, y los ojos que regresan a la casa tienen OutRoom = true. Si comes un pellet en ese
-  momento, los ojos pasan a scared: vuelven a ser fantasma azul a mitad del camino, a velocidad 256 × 0.8 ≈ 205, y otra
-  vez se pueden comer. Agrega la condición Status != GhostStatus.dead.
+  El startScared de ChooseDirection (Ghost.cs:225-228) parece pensado para cubrir este caso, pero nunca se ejecuta:
+  cuando TimeScared == 10f, el código entra a la rama de la reversa y no llama a ChooseDirection.
 
-  ⚠️3. Los fantasmas asustados siguen persiguiendo al jugador (Ghost.cs:166)
-  En BaseMove, el caso scared cae en el else y llama a ChooseDirection(maze, targetRow, targetCol) con el objetivo de
-  chase. Van más lento, pero se siguen acercando a ti. En el original:
-  - Al asustarse dan media vuelta de inmediato: Direction = GetReverse(Direction) y LastCell se invalida.
-  - En cada intersección eligen una dirección válida al azar, sin reversa.
+  La solución es hacer la reversa en SetScared() y quitar el if (TimeScared == 10f):
+  Direction = GetReverse(Direction);
+  LastCell[0] = -1; LastCell[1] = -1;
+  Con eso también puedes borrar startScared.
 
-  Como tu ChooseDirection ya junta las opciones válidas, puedes sacar ese filtro a un helper y usarlo con Random.
+  2. El objetivo aleatorio provoca overflow (Ghost.cs:190-192)
+  Rnd.Next() devuelve hasta unos 2 mil millones. En ChooseDirection, dx * dx pasa de int.MaxValue y da un valor sin
+  sentido, que a veces es negativo. Las elecciones parecen aleatorias por casualidad, pero no están distribuidas de
+  forma pareja.
+  - Solución mínima: Rnd.Next(maze.Cells.GetLength(0)) y Rnd.Next(maze.Cells.GetLength(1)).
+  - Solución más fiel al original: juntar las direcciones válidas (con Check y sin la reversa) y elegir una con
+    Rnd.Next(count).
 
-  ✅4. ResetPositions reinicia todo en cada frame (Game.cs:247-253)
-  Durante los 5 s de TimeToLife llama a Player.ResetPosition y a los cuatro Reset en cada frame. Ahora no se nota, pero
-  es frágil: cualquier estado que esos métodos inicialicen se vuelve a pisar unas 300 veces. Además el jugador ve 5 s
-  congelado + 5 s esperando, 10 s en total. Mejor:
-  - Hacer el reset una sola vez, al terminar TimeInDead.
-  - Agregar un estado Ready con su timer, de unos 2 s, que muestre "READY!".
+  3. TimeScared == 10f funciona como bandera de "recién asustado" (Ghost.cs:184)
+  Ahora funciona porque asignas exactamente 10f, pero comparar floats así es frágil. Con el arreglo del bug 1 deja de
+  hacer falta.
 
-  ✅5. No se puede salir de Game Over (Game.cs:132)
-  GameOver no tiene input. La única forma de volver a jugar es cerrar la ventana. Necesitas un NewGame() que reinicie el
-  maze (Maze.SetCells()), los puntos, las vidas y las posiciones, y que se active con una tecla.
+  4. Reset() pone a Blinky dentro de la casa sin estar adentro (Ghost.cs:90 y Game.cs:243, 258)
+  g.Reset() usa los valores por defecto outOfRoom=false y canUseDoor=true para los cuatro fantasmas. Blinky reaparece en
+  (11,14) creyendo que está dentro de la casa. Sale bien solo porque al caminar a la izquierda llega a la columna de la
+  puerta y LeaveRoom lo da por fuera. Te recomiendo guardar InitialOutRoom e InitialCanUseDoor en el constructor, igual
+  que ya haces con InitialDirection, y quitar los parámetros de Reset.
 
-  ??6. Blinky al morir no entra a la casa (Game.cs:185)
-  Su CanUseDoor = false y su base 'b' es (11,14), afuera de la puerta. Funciona, porque reaparece y vuelve a salir, pero
-  es inconsistente con los otros tres (que usan true) y con el original, donde todos los ojos entran. Si lo hiciste a
-  propósito, ignora este punto. Si no, dale a Blinky como objetivo de muerte una casilla dentro de la casa, por ejemplo
-  la de Pinky.
+  5. Al regresar a la casa, el fantasma igual elige dirección (Ghost.cs:168-180)
+  Cuando los ojos llegan a su base, el código revive al fantasma y después llama a ChooseDirection en el mismo frame,
+  aunque ya tiene Status normal y OutRoom = false. Mueve ChooseDirection a un else. Además, ese bloque repite casi todo
+  lo que hace Reset(), así que lo puedes extraer a un Revive().
 
-  Diseño y mejoras
+  6. Warning CS8602 (Game.cs:181-183)
+  En el case 'c' usas clyde, que sale de un FirstOrDefault y puede ser null. Ahí clyde es el mismo objeto que g, así que
+  usa g y borra la variable clyde.
 
-  ✅- CheckCollision está repetido 8 veces. Con una List<Ghost> Ghosts y un helper Collides(Entity a, Entity b) queda así:
-  foreach (var g in Ghosts) {
-      if (!Collides(Player, g)) continue;
-      if (g.Status == GhostStatus.normal) { KillPlayer(); return; }
-      if (g.Status == GhostStatus.scared) g.SetDead();
-  }
-    Lo mismo aplica a setScared y ResetPositions. Este cambio también simplifica casi todo lo que sigue.
-  ⚠️- Mueve las transiciones de estado a métodos de Ghost. Ahora Game asigna Status, Speed y CanUseDoor directamente. Con
-    SetDead(), SetScared() y SetNormal(), cada uno con su velocidad y sus banderas, los bugs 1 y 2 no habrían pasado.
-  ✅- Guarda el key en Entity. Hoy pasas 'b'/'r'/'i'/'c' a BaseMove y a Reset en cada llamada, y un typo ahí no lo detecta
-    el compilador.
-  - Puntos por fantasma en cadena: 200, 400, 800, 1600 dentro del mismo power pellet, en vez de 100 fijo.
-  - Avisa que se acaba el susto: que el fantasma parpadee en blanco cuando TimeScared < 2.
-  - Radio de colisión: con Pixel/2 + Pixel/2, basta con que los círculos se toquen para morir, y en las esquinas se
-    siente injusto. Prueba con Pixel/3 o compara la casilla (MazeRow/MazeCol).
+  Mejoras
+
+  - SetNormal() debería encargarse de todo. Hoy solo cambia Status, y la velocidad la asignan CheckScaredCounter, Reset
+    y el revive por separado. Si también pone Speed = NormalSpeed y TimeScared = 10f, se acaban esas repeticiones.
+  - Rnd debería ser private static readonly Random. No hace falta que sea público ni que haya uno por fantasma.
+  - Tiempos de muerte: 5 s congelado más 2 s de "Listo!" son 7 s cada vez que mueres. Con 1.5–2 s de TimeInDead alcanza.
+  - Inicio del juego: al presionar S pasas directo a Playing. Para ser consistente con el reinicio, entra a Ready.
+  - Pendientes de la revisión anterior: los puntos en cadena por fantasma (200/400/800/1600) y el parpadeo cuando
+    TimeScared < 2.
+  - Detalle opcional: en el original, los fantasmas que siguen dentro de la casa también se ponen azules. Ahora
+    setScared los ignora porque solo revisa OutRoom.
 
   Lo que falta
 
-  1. Victoria y siguiente nivel: guarda un contador PelletsLeft en Maze. Cuando llegue a 0, reinicia el maze y las
-     posiciones, y sube la velocidad.
-  2. Alternar scatter/chase por tiempo, con reversa forzada al cambiar de modo. Ya tienes ScatterCorner en los cuatro
-     fantasmas.
-  3. Terminar frightened: movimiento aleatorio y reversa (bug 3).
-  4. Reiniciar desde Game Over (bug 5).
+  1. Victoria y siguiente nivel: un contador PelletsLeft en Maze que, al llegar a 0, reinicie el maze y las posiciones.
+  2. Alternar scatter/chase por tiempo, con reversa forzada al cambiar de modo. Puedes reusar la reversa del bug 1
+     (GetReverse + invalidar LastCell).
+  3. Puntos en cadena y parpadeo del modo asustado.
 
-  Te sugiero empezar por el refactor a List<Ghost> con los métodos de estado en Ghost: arregla los bugs 1 y 2 de paso y
-  deja listo el punto 2 de lo que falta.
-  Mejoras antes de seguir
-
-
-
-    En el original las esquinas de scatter están fuera del laberinto, para que el fantasma dé vueltas alrededor de un
-    bloque. Con una casilla dentro también funciona.
-  - Lo pendiente de la revisión anterior cobra importancia ahora:
-    - Mover el cálculo de objetivos a Ghost, con un GetChaseTarget() o un Func. Scatter y frightened solo cambian el
-      objetivo, así que MoveGhost quedaría en un foreach.
-    - Compactar ChooseDirection en un ciclo.
-
-
-  Lo que sigue
-
-  1. Simplificar Clyde como en la propuesta (es corto).
-  ✅2. Colisión Pac-Man–fantasma, vidas y Reset() en Ghost y Player.
-  3. Alternar scatter/chase por tiempo, con reversa forzada al cambiar de modo.
-  ⚠️4. Frightened, y las pantallas de victoria y Game Over.
-
-
-  Mejoras (no son urgentes)
-
-  ??- Mueve el cálculo de objetivos fuera de Game. GetTarget y GetTargetInky son lógica de los fantasmas. Una opción es
-    darle a Ghost un Func<int[]> (o un método virtual GetChaseTarget()) para que Update sea solo foreach (var g in
-    ghosts) g.BaseMove(...). Te va a servir mucho para scatter y frightened, porque ahí solo cambia el objetivo.
-  ✅- Usa (int row, int col) o un struct en vez de int[2]. target[0]/target[1], LastCell y DoorPosition son fáciles de
-    confundir (fila o columna), y cada llamada a GetTarget crea un arreglo nuevo en cada frame.
-  ??- Puedes compactar ChooseDirection. Los cuatro bloques casi idénticos caben en un ciclo sobre {Up, Left, Down, Right}:
-    ese orden ya da el desempate correcto, con un helper Neighbor(dir) y GetReverse(Direction) para descartar la
-    reversa. Lo que tienes ahora funciona bien, esto solo es limpieza.
-  ⚠️- Todos tienen velocidad 100, el jugador y los fantasmas. En el original Pac-Man es un poco más rápido, y los
-    fantasmas van más lento en el túnel y cuando están asustados. Cuando llegues a frightened vas a necesitar cambiar
-    Speed de forma dinámica.
-  - El túnel funciona por el orden de las llamadas. Probablemente el teletransporte de Move ocurre antes de que el
-    fantasma llegue al centro de la celda del borde. Si un día cambias ese orden, el fantasma podría encontrarse sin
-    salidas en la columna 0 y darse la vuelta.
+  Te sugiero empezar por el bug 1, porque se nota en el juego y el arreglo son tres líneas. Después sigue el 2, y con
+  eso el modo asustado queda completo.
 
   IA de los fantasmas. En cada intersección, el fantasma elige la casilla vecina más cercana a un objetivo, y no puede dar media vuelta. El objetivo cambia según el fantasma:
      - Blinky: la casilla del jugador.
