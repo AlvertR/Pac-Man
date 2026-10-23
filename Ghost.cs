@@ -5,13 +5,18 @@ namespace Pac_Man
 {
     public class Ghost : Entity
     {
-        public Ghost(char key, float speed, Board board, Color color, Direction dir, float timeToStartMove, char cornerChar, bool outOfRoom = false, bool canUseDoor = false)
-            : base(key, speed, board)
+        const float NormalSpeed = 80f;
+        const float FrightSpeed = 50f;
+        const float EyeSpeed = 200f;
+        public Random Rnd = new Random();
+        public Ghost(char key, Board board, Color color, Direction dir, float timeToStartMove, char cornerChar, bool outOfRoom = false, bool canUseDoor = false)
+            : base(key, NormalSpeed, board)
         {
             Color = color;
             Direction = dir;
             InitialDirection = dir;
             TimeToStartMove = timeToStartMove;
+            InitialTimeToStartMove = timeToStartMove;
             OutRoom = outOfRoom;
             CanUseDoor = canUseDoor;
             LastCell[0] = MazeRow;
@@ -28,6 +33,7 @@ namespace Pac_Man
         public bool OutRoom { get; set; }
         public bool CanUseDoor { get; set; }
         public float TimeToStartMove { get; set; }
+        public float InitialTimeToStartMove { get; set; }
         public float TimeScared { get; set; }
         public Direction InitialDirection { get; set; }
         public int[] LastCell {  get; set; } = new int[2];
@@ -49,7 +55,6 @@ namespace Pac_Man
             }
             else if (Status == GhostStatus.scared)
             {
-                //Console.WriteLine("draw scared");
                 Raylib.DrawCircleSector(new Vector2(Bounds.X + (Bounds.Width / 2), Bounds.Y + (Bounds.Height / 2)), (Board.Pixel / 2), 180, 360, 1, Color.DarkBlue);
                 Raylib.DrawRectangleV(new Vector2(Bounds.X, Bounds.Y + (Bounds.Height / 2)), new Vector2(Bounds.Width, Bounds.Height / 2), Color.DarkBlue);
 
@@ -66,23 +71,34 @@ namespace Pac_Man
         }
 
         public void SetScared()
-            => Status = GhostStatus.scared;
+        { 
+            Status = GhostStatus.scared;
+            TimeScared = 10f;
+            Speed = FrightSpeed;
+        }
 
         public void SetNormal()
             => Status = GhostStatus.normal;
 
-        public void Reset(char key, float timeToStartMove, bool outOfRoom = false, bool canUseDoor = false)
+        public void SetDead()
         {
-            ResetPosition(key);
+            Status = GhostStatus.dead;
+            Speed = EyeSpeed;
+            CanUseDoor = true;
+        }
+
+        public void Reset( bool outOfRoom = false, bool canUseDoor = true)
+        {
+            ResetPosition();
             SetNormal();
             Direction = InitialDirection;
-            TimeToStartMove = timeToStartMove;
+            TimeToStartMove = InitialTimeToStartMove;
             OutRoom = outOfRoom;
             CanUseDoor = canUseDoor;
             LastCell[0] = MazeRow;
             LastCell[1] = MazeCol;
             CanMove = false;
-            Speed = 80;
+            Speed = NormalSpeed;
         }
 
         public void StartMoveCounter(float deltaTime)
@@ -97,10 +113,9 @@ namespace Pac_Man
         {
             if (TimeScared <= 0)
             {
-                //Console.WriteLine("scared end");
                 SetNormal();
                 TimeScared = 10f;
-                Speed = 80f;
+                Speed = NormalSpeed;
             }
             else
                 TimeScared -= deltaTime;
@@ -138,7 +153,7 @@ namespace Pac_Man
             }
         }
 
-        public void BaseMove(float deltaTime, Maze maze, int targetRow, int targetCol, char key)
+        public void BaseMove(float deltaTime, Maze maze, int targetRow, int targetCol)
         {
             StartMoveCounter(deltaTime);
             if (CanMove)
@@ -149,10 +164,9 @@ namespace Pac_Man
                 {
                     if (Status == GhostStatus.dead)
                     {
-                        var basePos = Board.GetInitialPosition(key);
+                        var basePos = Board.GetInitialPosition(Key);
                         if (isInitialCell(basePos[0], basePos[1]))
                         {
-                            //ResetPosition(key);
                             SetNormal();
                             Direction = InitialDirection;
                             TimeToStartMove = 0f;
@@ -161,9 +175,22 @@ namespace Pac_Man
                             LastCell[0] = MazeRow;
                             LastCell[1] = MazeCol;
                             CanMove = true;
-                            Speed = 80;
+                            Speed = NormalSpeed;
                         }
                         ChooseDirection(maze, basePos[0], basePos[1]);
+                    }
+                    else if (Status == GhostStatus.scared)
+                    {
+                        if (TimeScared == 10f)
+                        {
+                            Direction = GetReverse(Direction);
+                        }
+                        else
+                        {
+                            int row = Rnd.Next();
+                            int col = Rnd.Next();
+                            ChooseDirection(maze, row, col);
+                        }
                     }
                     else
                         ChooseDirection(maze, targetRow, targetCol);
@@ -195,8 +222,10 @@ namespace Pac_Man
         public void ChooseDirection(Maze maze, int targetRow, int targetCol)
         {
             bool isLastCell = LastCell[0] == MazeRow && LastCell[1] == MazeCol;
-            if (isLastCell || !(CenterX && CenterY))
-                return;
+            bool startScared = Status == GhostStatus.scared && TimeScared == 10f;
+            if (!startScared)
+                if (isLastCell || !(CenterX && CenterY))
+                    return;
 
             int dUp = int.MaxValue;
             int dDown = int.MaxValue;

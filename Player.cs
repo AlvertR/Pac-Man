@@ -70,12 +70,6 @@ namespace Pac_Man
             return false;
         }
 
-        public bool isPowerPelletCell(Maze maze)
-        {
-            var currentCell = maze.Cells[MazeRow, MazeCol];
-            return currentCell == CellType.PowerPellet;
-        }
-
         public void UpdateDirection(Maze maze, float deltaTime)
         {
             bool update = false;

@@ -6,6 +6,7 @@ namespace Pac_Man
     {
         protected Entity(char key, float speed, Board board)
         {
+            Key = key;
             var spritePos = board.GetInitialPosition(key);
             MazeCol = spritePos[1];
             MazeRow = spritePos[0];
@@ -29,6 +30,7 @@ namespace Pac_Man
         public float Step { get; set; }
         public bool CenterX {  get; set; }
         public bool CenterY { get; set; }
+        public char Key {  get; set; }
 
         public void SetPositionX(float position)
         {
@@ -142,9 +144,9 @@ namespace Pac_Man
             }
         }
     
-        public void ResetPosition(char key)
+        public void ResetPosition()
         {
-            var spritePos = Board.GetInitialPosition(key);
+            var spritePos = Board.GetInitialPosition(Key);
             MazeCol = spritePos[1];
             MazeRow = spritePos[0];
             float x0 = Board.OffsetX + MazeCol * Board.Pixel;

@@ -25,6 +25,7 @@
         Playing,
         Paused,
         DeadPlayer,
+        Ready,
         GameOver,
         End,
     }

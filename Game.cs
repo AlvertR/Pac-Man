@@ -7,19 +7,20 @@ namespace Pac_Man
     {
         public Game(int width, int height, string name, int fps)
         {
-            WidthWindow = width;
             HeightWindow = height;
+            WidthWindow = width;
             NameWindow = name;
             FPS = fps;
             TimeInDead = 5f;
-            TimeToLife = 5f;
+            TimeToLife = 2f;
             Board = new Board(WidthWindow, HeightWindow);
             Maze = new Maze(Board);
             Player = new Player('p', 100, Board);
-            Blinky = new Ghost('b', 80, Board, Color.Red, Direction.Left, 0f, '1', true, false);
-            Pinky = new Ghost('r', 80, Board, Color.Pink, Direction.Left, 5f,'2', false, true);
-            Inky = new Ghost('i', 80, Board, Color.SkyBlue, Direction.Right, 10f, '3', false, true);
-            Clyde = new Ghost('c', 80, Board, Color.Orange, Direction.Right, 15f, '4', false, true);
+            Ghost Blinky = new Ghost('b', Board, Color.Red, Direction.Left, 0f, '1', true, false);
+            Ghost Pinky = new Ghost('r', Board, Color.Pink, Direction.Left, 5f,'2', false, true);
+            Ghost Inky = new Ghost('i', Board, Color.SkyBlue, Direction.Right, 10f, '3', false, true);
+            Ghost Clyde = new Ghost('c', Board, Color.Orange, Direction.Right, 15f, '4', false, true);
+            Ghosts = new List<Ghost> { Blinky, Pinky, Inky, Clyde };
         }
         public int HeightWindow { get; private set; }
         public int WidthWindow { get; private set; }
@@ -32,10 +33,7 @@ namespace Pac_Man
         public Board Board { get; set; }
         public Maze Maze { get; set; }
         public Player Player { get; set; }
-        public Ghost Blinky { get; set; }
-        public Ghost Pinky { get; set; }
-        public Ghost Inky { get; set; }
-        public Ghost Clyde { get; set; }
+        public List<Ghost> Ghosts { get; set; }
 
         public void Run()
         {
@@ -72,19 +70,21 @@ namespace Pac_Man
                 case GameStatus.Paused:
                 case GameStatus.Playing:
                 case GameStatus.DeadPlayer:
+                case GameStatus.Ready:
                     Maze.Draw();
                     Raylib.DrawText("Puntuacion: " + Player.Points.ToString(), 0, 0, 24, Color.White);
                     Player.Draw();
-                    Blinky.Draw();
-                    Pinky.Draw();
-                    Inky.Draw();
-                    Clyde.Draw();
-                    if(Status == GameStatus.Paused)
+                    foreach (var g in Ghosts)
+                        g.Draw();
+                    if (Status == GameStatus.Paused)
                         Raylib.DrawText("Pausa", 300, 400, 40, Color.White);
+                    if (Status == GameStatus.Ready)
+                        Raylib.DrawText("Listo!", 300, 400, 40, Color.White);
                     break;
                 case GameStatus.GameOver:
                     Raylib.DrawText("Fin del juego", 0, 0, 34, Color.White);
                     Raylib.DrawText("Puntuacion: " + Player.Points.ToString(), 0, 30, 24, Color.White);
+                    Raylib.DrawText("Presion R para volver a jugar", 0, 60, 24, Color.White);
                     break;
                 case GameStatus.End:
                     break;
@@ -96,15 +96,21 @@ namespace Pac_Man
         {
             switch (Status) {
                 case GameStatus.Playing:
-                    //Console.WriteLine("check " + Player.isPowerPelletCell(Maze));
-                    //if(Player.isPowerPelletCell(Maze))
-                    //    setScared();
                     MovementPlayer();
                     MoveGhost();
                     CheckCollision();
                     break;
                 case GameStatus.DeadPlayer:
                     ResetPositions();
+                    break;
+                case GameStatus.Ready:
+                    if (TimeToLife > 0)
+                        TimeToLife -= DeltaTime;
+                    else
+                    {
+                        Status = GameStatus.Playing;
+                        TimeToLife = 2f;
+                    }
                     break;
                 case GameStatus.Start:
                 case GameStatus.Paused:
@@ -131,8 +137,11 @@ namespace Pac_Man
                     if (Raylib.IsKeyPressed(KeyboardKey.P))
                         Status = GameStatus.Playing;
                     break;
-                case GameStatus.DeadPlayer:
                 case GameStatus.GameOver:
+                    if (Raylib.IsKeyPressed(KeyboardKey.R))
+                        ResetGame();
+                    break;
+                case GameStatus.DeadPlayer:
                 case GameStatus.End:
                 default: 
                     break;
@@ -149,124 +158,107 @@ namespace Pac_Man
                 setScared();
         }
 
-        public (int row, int col) GetTargetInky()
-        {
-            var pivote = Inky.GetTarget(Player, 2);
-            return ((2 * pivote.row - Blinky.MazeRow), (2 * pivote.col - Blinky.MazeCol));
-        }
-
         public void MoveGhost()
         {
-            Blinky.BaseMove(DeltaTime, Maze, Player.MazeRow, Player.MazeCol, 'b');
+            var blinky = Ghosts.FirstOrDefault(g => g.Key == 'b');
+            var clyde = Ghosts.FirstOrDefault(g => g.Key == 'c');
+            foreach (var g in Ghosts) {
+                switch (g.Key)
+                {
+                    case 'b':
+                        g.BaseMove(DeltaTime, Maze, Player.MazeRow, Player.MazeCol);
+                        break;
+                    case 'r':
+                        var targetPinky = g.GetTarget(Player, 4);
+                        g.BaseMove(DeltaTime, Maze, targetPinky.row, targetPinky.col);
+                        break;
+                    case 'i':
+                        var pivote = g.GetTarget(Player, 2);
+                        (int row, int col) targetInky = ((2 * pivote.row - blinky.MazeRow), (2 * pivote.col - blinky.MazeCol));
+                        g.BaseMove(DeltaTime, Maze, targetInky.row, targetInky.col);
+                        break;
+                    case 'c':
+                        int dx = clyde.MazeCol - Player.MazeCol;
+                        int dy = clyde.MazeRow - Player.MazeRow;
+                        (int row, int col) targetClyde = dx * dx + dy * dy > 64 ? (Player.MazeRow, Player.MazeCol) : (clyde.ScatterCorner.Row, clyde.ScatterCorner.Col);
+                        g.BaseMove(DeltaTime, Maze, targetClyde.row, targetClyde.col);
+                        break;
+                }
+            }
+        }
 
-            var targetPinky = Pinky.GetTarget(Player, 4);
-            Pinky.BaseMove(DeltaTime, Maze, targetPinky.row, targetPinky.col, 'r');
+        public bool Collides(Entity a, Entity b)
+        {
+            return Raylib.CheckCollisionCircles(new Vector2(a.Bounds.X + (a.Bounds.Width / 2), a.Bounds.Y + (a.Bounds.Height / 2)), (Board.Pixel / 2), 
+                new Vector2(b.Bounds.X + (b.Bounds.Width / 2), b.Bounds.Y + (b.Bounds.Height / 2)), (Board.Pixel / 2));
+        }
 
-            var targetInky = GetTargetInky();
-            Inky.BaseMove(DeltaTime, Maze, targetInky.row, targetInky.col, 'i');
-
-            int dx = Clyde.MazeCol - Player.MazeCol;
-            int dy = Clyde.MazeRow - Player.MazeRow;
-            (int row, int col) targetClyde = dx * dx + dy * dy > 64 ? (Player.MazeRow, Player.MazeCol) : (Clyde.ScatterCorner.Row, Clyde.ScatterCorner.Col);
-            Clyde.BaseMove(DeltaTime, Maze, targetClyde.row, targetClyde.col, 'c');
+        public void KillPlayer()
+        {
+            Status = GameStatus.DeadPlayer;
+            Player.Lifes--;
         }
 
         public void CheckCollision()
         {
-            if ((Blinky.Status == GhostStatus.normal && Raylib.CheckCollisionCircles(new Vector2(Player.Bounds.X + (Player.Bounds.Width/2), Player.Bounds.Y + (Player.Bounds.Height/2)), (Board.Pixel / 2), new Vector2(Blinky.Bounds.X + (Blinky.Bounds.Width / 2), Blinky.Bounds.Y + (Blinky.Bounds.Height / 2)), (Board.Pixel / 2)))
-                || (Pinky.Status == GhostStatus.normal && Raylib.CheckCollisionCircles(new Vector2(Player.Bounds.X + (Player.Bounds.Width / 2), Player.Bounds.Y + (Player.Bounds.Height / 2)), (Board.Pixel / 2), new Vector2(Pinky.Bounds.X + (Pinky.Bounds.Width / 2), Pinky.Bounds.Y + (Pinky.Bounds.Height / 2)), (Board.Pixel / 2)))
-                || (Inky.Status == GhostStatus.normal && Raylib.CheckCollisionCircles(new Vector2(Player.Bounds.X + (Player.Bounds.Width / 2), Player.Bounds.Y + (Player.Bounds.Height / 2)), (Board.Pixel / 2), new Vector2(Inky.Bounds.X + (Inky.Bounds.Width / 2), Inky.Bounds.Y + (Inky.Bounds.Height / 2)), (Board.Pixel / 2)))
-                || (Clyde.Status == GhostStatus.normal && Raylib.CheckCollisionCircles(new Vector2(Player.Bounds.X + (Player.Bounds.Width / 2), Player.Bounds.Y + (Player.Bounds.Height / 2)), (Board.Pixel / 2), new Vector2(Clyde.Bounds.X + (Clyde.Bounds.Width / 2), Clyde.Bounds.Y + (Clyde.Bounds.Height / 2)), (Board.Pixel / 2))))
+            foreach(var g in Ghosts)
             {
-                Status = GameStatus.DeadPlayer;
-                Player.Lifes--;
-            }
-            if ((Blinky.Status == GhostStatus.scared && Raylib.CheckCollisionCircles(new Vector2(Player.Bounds.X + (Player.Bounds.Width / 2), Player.Bounds.Y + (Player.Bounds.Height / 2)), (Board.Pixel / 2), new Vector2(Blinky.Bounds.X + (Blinky.Bounds.Width / 2), Blinky.Bounds.Y + (Blinky.Bounds.Height / 2)), (Board.Pixel / 2))))
-            {
-                Blinky.Status = GhostStatus.dead;
-                Blinky.Speed = Blinky.Speed * 4;
-                Blinky.CanUseDoor = false;
-                Player.Points += 100;
-            }
-            if ((Pinky.Status == GhostStatus.scared && Raylib.CheckCollisionCircles(new Vector2(Player.Bounds.X + (Player.Bounds.Width / 2), Player.Bounds.Y + (Player.Bounds.Height / 2)), (Board.Pixel / 2), new Vector2(Pinky.Bounds.X + (Pinky.Bounds.Width / 2), Pinky.Bounds.Y + (Pinky.Bounds.Height / 2)), (Board.Pixel / 2))))
-            {
-                Pinky.Status = GhostStatus.dead;
-                Pinky.Speed = Pinky.Speed * 4;
-                Pinky.CanUseDoor = true;
-                Player.Points += 100;
-            }
-            if ((Inky.Status == GhostStatus.scared && Raylib.CheckCollisionCircles(new Vector2(Player.Bounds.X + (Player.Bounds.Width / 2), Player.Bounds.Y + (Player.Bounds.Height / 2)), (Board.Pixel / 2), new Vector2(Inky.Bounds.X + (Inky.Bounds.Width / 2), Inky.Bounds.Y + (Inky.Bounds.Height / 2)), (Board.Pixel / 2))))
-            {
-                Inky.Status = GhostStatus.dead;
-                Inky.Speed = Inky.Speed * 4;
-                Inky.CanUseDoor = true;
-                Player.Points += 100;
-            }
-            if ((Clyde.Status == GhostStatus.scared && Raylib.CheckCollisionCircles(new Vector2(Player.Bounds.X + (Player.Bounds.Width / 2), Player.Bounds.Y + (Player.Bounds.Height / 2)), (Board.Pixel / 2), new Vector2(Clyde.Bounds.X + (Clyde.Bounds.Width / 2), Clyde.Bounds.Y + (Clyde.Bounds.Height / 2)), (Board.Pixel / 2))))
-            {
-                Clyde.Status = GhostStatus.dead;
-                Clyde.Speed = Clyde.Speed * 4;
-                Clyde.CanUseDoor = true;
-                Player.Points += 100;
+                if(!Collides(Player, g)) continue;
+                if(g.Status == GhostStatus.normal)
+                {
+                    KillPlayer();
+                    return;
+                }
+                if (g.Status == GhostStatus.scared)
+                {
+                    g.SetDead();
+                    Player.Points += 100;
+                }
             }
         }
 
         public void setScared()
         {
-            //Console.WriteLine("scared start");
-            if (Blinky.OutRoom)
+            foreach (var g in Ghosts)
             {
-                Blinky.SetScared();
-                Blinky.TimeScared = 10f;
-                Blinky.Speed = Blinky.Speed * 0.8f;
-            }
-            if (Pinky.OutRoom)
-            {
-                Pinky.SetScared();
-                Pinky.TimeScared = 10f;
-                Pinky.Speed = Pinky.Speed * 0.8f;
-            }
-            if (Inky.OutRoom)
-            {
-                Inky.SetScared();
-                Inky.TimeScared = 10f;
-                Inky.Speed = Inky.Speed * 0.8f;
-            }
-            if (Clyde.OutRoom)
-            {
-                Clyde.SetScared();
-                Clyde.TimeScared = 10f;
-                Clyde.Speed = Clyde.Speed * 0.8f;
+                if(g.OutRoom && g.Status != GhostStatus.dead)
+                    g.SetScared();
             }
         }
 
         public void ResetPositions()
         {
-            if (TimeInDead <= 0)
+            if(TimeInDead > 0)
+                TimeInDead -= DeltaTime;
+            else
             {
-                if (Player.Lifes <= 0)
+                if (Player.Lifes == 0)
                     Status = GameStatus.GameOver;
                 else
                 {
-                    Player.ResetPosition('p');
+                    Player.ResetPosition();
                     Player.Direction = Direction.Left;
                     Player.DesiredDirection = Direction.Left;
-                    Blinky.Reset('b', 0f, true, false);
-                    Pinky.Reset('r', 5f, false, true);
-                    Inky.Reset('i', 10f, false, true);
-                    Clyde.Reset('c', 15f, false, true);
-                    if (TimeToLife <= 0)
-                    {
-                        Status = GameStatus.Playing;
-                        TimeToLife = 5f;
-                        TimeInDead = 5f;
-                    }
-                    else
-                        TimeToLife -= DeltaTime;
+                    foreach (var g in Ghosts)
+                        g.Reset();
+                    TimeInDead = 5f;
+                    Status = GameStatus.Ready;
                 }
             }
-            else
-                TimeInDead -= DeltaTime;
+        }
+
+        public void ResetGame()
+        {
+            Player.ResetPosition();
+            Player.Direction = Direction.Left;
+            Player.DesiredDirection = Direction.Left;
+            Player.Points = 0;
+            Player.Lifes = 3;
+            foreach (var g in Ghosts)
+                g.Reset();
+            Maze.SetCells();
+            TimeInDead = 5f;
+            Status = GameStatus.Ready;
         }
     }
 }
