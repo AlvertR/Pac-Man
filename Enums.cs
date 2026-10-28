@@ -26,6 +26,7 @@
         Paused,
         DeadPlayer,
         Ready,
+        NextLevel,
         GameOver,
         End,
     }
@@ -34,6 +35,7 @@
     {
         normal,
         scared,
+        scatter,
         dead,
     }
 }

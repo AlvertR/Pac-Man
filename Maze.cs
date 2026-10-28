@@ -9,11 +9,13 @@ namespace Pac_Man
         {
             Board = board;
             Cells = new CellType[Board.Rows, Board.Cols];
+            TotalPellets = 0;
             SetCells();
         }
 
         public CellType[,] Cells {get; set;}
         public Board Board {get; set;}
+        public int TotalPellets {get; set;}
 
 
         public void Draw()
@@ -87,9 +89,11 @@ namespace Pac_Man
                         case '3':
                         case '4':
                             Cells[r, c] = CellType.Pellet;
+                            TotalPellets++;
                             break;
                         case 'o':
                             Cells[r, c] = CellType.PowerPellet;
+                            TotalPellets++;
                             break;
                         case 'b':
                         case 'i':
@@ -140,9 +144,9 @@ namespace Pac_Man
             "#......##....##....##......#",
             "######.#####-##-#####.######",
             "-----#.#####-##-#####.#-----",
-            "-----#.##-----b----##.#-----",
+            "-----#.##----------##.#-----",
             "-----#.##-###//###-##.#-----",
-            "######.##-#-i----#-##.######",
+            "######.##-#-ib---#-##.######",
             "0-----.---#-r----#---.-----0",
             "######.##-#-c----#-##.######",
             "-----#.##-########-##.#-----",

@@ -11,10 +11,12 @@ namespace Pac_Man
             Points = 0;
             Lifes = 3;
             Direction = Direction.Left;
+            EatedGhosts = 0;
         }
         public Direction DesiredDirection { get; set; } = Direction.None;
         public int Points {  get; set; }
         public int Lifes {  get; set; }
+        public int EatedGhosts {  get; set; }
 
         public void Draw()
         {
@@ -58,11 +60,13 @@ namespace Pac_Man
                 if (currentCell == CellType.Pellet)
                 {
                     maze.Cells[MazeRow, MazeCol] = CellType.Path;
+                    maze.TotalPellets--;
                     Points += 10;
                 }
                 if (currentCell == CellType.PowerPellet)
                 {
                     maze.Cells[MazeRow, MazeCol] = CellType.Path;
+                    maze.TotalPellets--;
                     Points += 50;
                     return true;
                 }

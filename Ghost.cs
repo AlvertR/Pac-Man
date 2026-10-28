@@ -8,7 +8,6 @@ namespace Pac_Man
         const float NormalSpeed = 80f;
         const float FrightSpeed = 50f;
         const float EyeSpeed = 200f;
-        public Random Rnd = new Random();
         public Ghost(char key, Board board, Color color, Direction dir, float timeToStartMove, char cornerChar, bool outOfRoom = false, bool canUseDoor = false)
             : base(key, NormalSpeed, board)
         {
@@ -27,6 +26,10 @@ namespace Pac_Man
             ScatterCorner = new ScatterCorner(Board.GetInitialPosition(cornerChar)[0], Board.GetInitialPosition(cornerChar)[1]);
             Status = GhostStatus.normal;
             TimeScared = 10f;
+            TimeInScatter = 5f;
+            TimeToScatter = 10f;
+            SwitchSprite = false;
+            IntervalScared = 0f;
         }
         public Color Color { get; set; }
         public bool CanMove { get; set; } = false;
@@ -35,15 +38,19 @@ namespace Pac_Man
         public float TimeToStartMove { get; set; }
         public float InitialTimeToStartMove { get; set; }
         public float TimeScared { get; set; }
+        public float TimeInScatter { get; set; }
+        public float TimeToScatter { get; set; }
+        public float IntervalScared { get; set; }
         public Direction InitialDirection { get; set; }
         public int[] LastCell {  get; set; } = new int[2];
         public int[] DoorPosition {  get; set; } = new int[2];
         public ScatterCorner ScatterCorner {  get; set; }
         public GhostStatus Status { get; set; }
+        public bool SwitchSprite { get; set; }
 
         public void Draw()
         {
-            if (Status == GhostStatus.normal)
+            if (Status == GhostStatus.normal || Status == GhostStatus.scatter)
             {
                 Raylib.DrawCircleSector(new Vector2(Bounds.X + (Bounds.Width / 2), Bounds.Y + (Bounds.Height / 2)), (Board.Pixel / 2), 180, 360, 1, Color);
                 Raylib.DrawRectangleV(new Vector2(Bounds.X, Bounds.Y + (Bounds.Height / 2)), new Vector2(Bounds.Width, Bounds.Height / 2), Color);
@@ -55,13 +62,26 @@ namespace Pac_Man
             }
             else if (Status == GhostStatus.scared)
             {
-                Raylib.DrawCircleSector(new Vector2(Bounds.X + (Bounds.Width / 2), Bounds.Y + (Bounds.Height / 2)), (Board.Pixel / 2), 180, 360, 1, Color.DarkBlue);
-                Raylib.DrawRectangleV(new Vector2(Bounds.X, Bounds.Y + (Bounds.Height / 2)), new Vector2(Bounds.Width, Bounds.Height / 2), Color.DarkBlue);
+                if (!SwitchSprite)
+                {
+                    Raylib.DrawCircleSector(new Vector2(Bounds.X + (Bounds.Width / 2), Bounds.Y + (Bounds.Height / 2)), (Board.Pixel / 2), 180, 360, 1, Color.DarkBlue);
+                    Raylib.DrawRectangleV(new Vector2(Bounds.X, Bounds.Y + (Bounds.Height / 2)), new Vector2(Bounds.Width, Bounds.Height / 2), Color.DarkBlue);
 
-                Raylib.DrawRectangleV(new Vector2(Bounds.X + (Bounds.Width / 6), Bounds.Y + (Bounds.Height / 4)), new Vector2(Bounds.Width / 8, Bounds.Height / 8), Color.Yellow);
-                Raylib.DrawRectangleV(new Vector2(Bounds.X + (Bounds.Width / 2), Bounds.Y + (Bounds.Height / 4)), new Vector2(Bounds.Width / 8, Bounds.Height / 8), Color.Yellow);
+                    Raylib.DrawRectangleV(new Vector2(Bounds.X + (Bounds.Width / 6), Bounds.Y + (Bounds.Height / 4)), new Vector2(Bounds.Width / 8, Bounds.Height / 8), Color.Yellow);
+                    Raylib.DrawRectangleV(new Vector2(Bounds.X + (Bounds.Width / 2), Bounds.Y + (Bounds.Height / 4)), new Vector2(Bounds.Width / 8, Bounds.Height / 8), Color.Yellow);
 
-                Raylib.DrawLineV(new Vector2(Bounds.X + (Bounds.Width / 6), Bounds.Y + (Bounds.Height / 5) * 3), new Vector2(Bounds.X + (Bounds.Width / 3) * 2, Bounds.Y + (Bounds.Height / 5) * 3), Color.Yellow);
+                    Raylib.DrawLineV(new Vector2(Bounds.X + (Bounds.Width / 6), Bounds.Y + (Bounds.Height / 5) * 3), new Vector2(Bounds.X + (Bounds.Width / 3) * 2, Bounds.Y + (Bounds.Height / 5) * 3), Color.Yellow);
+                }
+                else
+                {
+                    Raylib.DrawCircleSector(new Vector2(Bounds.X + (Bounds.Width / 2), Bounds.Y + (Bounds.Height / 2)), (Board.Pixel / 2), 180, 360, 1, Color.White);
+                    Raylib.DrawRectangleV(new Vector2(Bounds.X, Bounds.Y + (Bounds.Height / 2)), new Vector2(Bounds.Width, Bounds.Height / 2), Color.White);
+
+                    Raylib.DrawRectangleV(new Vector2(Bounds.X + (Bounds.Width / 6), Bounds.Y + (Bounds.Height / 4)), new Vector2(Bounds.Width / 8, Bounds.Height / 8), Color.Black);
+                    Raylib.DrawRectangleV(new Vector2(Bounds.X + (Bounds.Width / 2), Bounds.Y + (Bounds.Height / 4)), new Vector2(Bounds.Width / 8, Bounds.Height / 8), Color.Black);
+
+                    Raylib.DrawLineV(new Vector2(Bounds.X + (Bounds.Width / 6), Bounds.Y + (Bounds.Height / 5) * 3), new Vector2(Bounds.X + (Bounds.Width / 3) * 2, Bounds.Y + (Bounds.Height / 5) * 3), Color.Black);
+                }
             }
             else
             {
@@ -75,10 +95,30 @@ namespace Pac_Man
             Status = GhostStatus.scared;
             TimeScared = 10f;
             Speed = FrightSpeed;
+            Direction = GetReverse(Direction);
+            LastCell[0] = -1;
+            LastCell[1] = -1;
+            IntervalScared = 0f;
+            SwitchSprite = false;
         }
 
+        public void SetScatter()
+        {
+            Status = GhostStatus.scatter;
+            Direction = GetReverse(Direction);
+            LastCell[0] = -1;
+            LastCell[1] = -1;
+            TimeInScatter = 5f;
+        }
         public void SetNormal()
-            => Status = GhostStatus.normal;
+        { 
+            Status = GhostStatus.normal;
+            TimeScared = 10f;
+            Speed = NormalSpeed;
+            IntervalScared = 0f;
+            SwitchSprite = false;
+            TimeToScatter = 10f;
+        }
 
         public void SetDead()
         {
@@ -90,17 +130,20 @@ namespace Pac_Man
         public void Reset( bool outOfRoom = false, bool canUseDoor = true)
         {
             ResetPosition();
+            Revive(InitialTimeToStartMove, false, outOfRoom, canUseDoor);
+        }
+
+        public void Revive(float timeToStartMove, bool canMove, bool outOfRoom = false, bool canUseDoor = true)
+        {
             SetNormal();
             Direction = InitialDirection;
-            TimeToStartMove = InitialTimeToStartMove;
+            TimeToStartMove = timeToStartMove;
             OutRoom = outOfRoom;
             CanUseDoor = canUseDoor;
             LastCell[0] = MazeRow;
             LastCell[1] = MazeCol;
-            CanMove = false;
-            Speed = NormalSpeed;
+            CanMove = canMove;
         }
-
         public void StartMoveCounter(float deltaTime)
         {
             if (TimeToStartMove <= 0)
@@ -114,11 +157,52 @@ namespace Pac_Man
             if (TimeScared <= 0)
             {
                 SetNormal();
-                TimeScared = 10f;
-                Speed = NormalSpeed;
             }
             else
+            {
+                var change = TimeScared;
                 TimeScared -= deltaTime;
+                if (TimeScared < 2)
+                {
+                    if (IntervalScared >= 0.2f)
+                    {
+                        SwitchSprite = !SwitchSprite;
+                        IntervalScared -= 0.2f;
+                    }
+                    else
+                        IntervalScared += deltaTime;
+                }
+            }
+        }
+
+        public void CheckInScatteCounter(float deltaTime)
+        {
+            if (Status == GhostStatus.scatter)
+            {
+                if (TimeInScatter <= 0)
+                {
+                    SetNormal();
+                }
+                else
+                {
+                    TimeInScatter -= deltaTime;
+                }
+            }
+        }
+
+        public void CheckToBeScatteCounter(float deltaTime)
+        {
+            if (Status == GhostStatus.normal)
+            {
+                if (TimeToScatter <= 0)
+                {
+                    SetScatter();
+                }
+                else
+                {
+                    TimeToScatter -= deltaTime;
+                }
+            }
         }
 
         public bool isInitialCell(int row, int col)
@@ -136,13 +220,16 @@ namespace Pac_Man
                 int doorRow = DoorPosition[0];
 
                 if (MazeCol < doorCol)
+                {
                     Direction = Direction.Right;
-                if (MazeCol == doorCol && CenterY && MazeRow > doorRow - 1)
+                    SetPositionY(Board.OffsetY + MazeRow * Board.Pixel);
+                }
+                else if (MazeCol == doorCol && CenterY && MazeRow > doorRow - 1)
                 {
                     Direction = Direction.Up;
                     SetPositionX(Board.OffsetX + MazeCol * Board.Pixel);
                 }
-                if (MazeCol == doorCol && CenterX && MazeRow < doorRow)
+                else if (MazeCol == doorCol && CenterX && MazeRow < doorRow)
                 {
                     OutRoom = true;
                     CanUseDoor = false;
@@ -153,7 +240,7 @@ namespace Pac_Man
             }
         }
 
-        public void BaseMove(float deltaTime, Maze maze, int targetRow, int targetCol)
+        public void BaseMove(float deltaTime, Maze maze, int targetRow, int targetCol, Random rnd)
         {
             StartMoveCounter(deltaTime);
             if (CanMove)
@@ -167,39 +254,34 @@ namespace Pac_Man
                         var basePos = Board.GetInitialPosition(Key);
                         if (isInitialCell(basePos[0], basePos[1]))
                         {
-                            SetNormal();
-                            Direction = InitialDirection;
-                            TimeToStartMove = 0f;
-                            OutRoom = false;
-                            CanUseDoor = true;
-                            LastCell[0] = MazeRow;
-                            LastCell[1] = MazeCol;
-                            CanMove = true;
-                            Speed = NormalSpeed;
+                            Revive(0f, true);
                         }
-                        ChooseDirection(maze, basePos[0], basePos[1]);
+                        else
+                            ChooseDirection(maze, basePos[0], basePos[1]);
                     }
                     else if (Status == GhostStatus.scared)
                     {
-                        if (TimeScared == 10f)
-                        {
-                            Direction = GetReverse(Direction);
-                        }
-                        else
-                        {
-                            int row = Rnd.Next();
-                            int col = Rnd.Next();
-                            ChooseDirection(maze, row, col);
-                        }
+                        int row = rnd.Next(maze.Cells.GetLength(0));
+                        int col = rnd.Next(maze.Cells.GetLength(1));
+                        ChooseDirection(maze, row, col);
+                    }
+                    else if(Status == GhostStatus.scatter)
+                    {
+                        ChooseDirection(maze, ScatterCorner.Row, ScatterCorner.Col);
                     }
                     else
+                    {
+                        CheckToBeScatteCounter(deltaTime);
                         ChooseDirection(maze, targetRow, targetCol);
+                    }
                 }
-                if (Status == GhostStatus.scared)
-                    CheckScaredCounter(deltaTime);
                 Move(maze, CanUseDoor, deltaTime);
                 UpdateColRow();
             }
+            if (Status == GhostStatus.scared)
+                CheckScaredCounter(deltaTime);
+            if (Status == GhostStatus.scatter)
+                CheckInScatteCounter(deltaTime);
         }
 
         public (int row, int col) GetTarget(Entity entity, int n)
@@ -222,10 +304,8 @@ namespace Pac_Man
         public void ChooseDirection(Maze maze, int targetRow, int targetCol)
         {
             bool isLastCell = LastCell[0] == MazeRow && LastCell[1] == MazeCol;
-            bool startScared = Status == GhostStatus.scared && TimeScared == 10f;
-            if (!startScared)
-                if (isLastCell || !(CenterX && CenterY))
-                    return;
+            if (isLastCell || !(CenterX && CenterY))
+                return;
 
             int dUp = int.MaxValue;
             int dDown = int.MaxValue;

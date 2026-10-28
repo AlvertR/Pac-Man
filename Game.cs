@@ -5,18 +5,20 @@ namespace Pac_Man
 {
     public class Game
     {
+        private static readonly Random Rnd = new Random();
         public Game(int width, int height, string name, int fps)
         {
             HeightWindow = height;
             WidthWindow = width;
             NameWindow = name;
             FPS = fps;
-            TimeInDead = 5f;
+            TimeInDead = 2f;
             TimeToLife = 2f;
+            TimeToNext = 2f;
             Board = new Board(WidthWindow, HeightWindow);
             Maze = new Maze(Board);
             Player = new Player('p', 100, Board);
-            Ghost Blinky = new Ghost('b', Board, Color.Red, Direction.Left, 0f, '1', true, false);
+            Ghost Blinky = new Ghost('b', Board, Color.Red, Direction.Left, 0f, '1', false, true);
             Ghost Pinky = new Ghost('r', Board, Color.Pink, Direction.Left, 5f,'2', false, true);
             Ghost Inky = new Ghost('i', Board, Color.SkyBlue, Direction.Right, 10f, '3', false, true);
             Ghost Clyde = new Ghost('c', Board, Color.Orange, Direction.Right, 15f, '4', false, true);
@@ -29,6 +31,7 @@ namespace Pac_Man
         public float DeltaTime { get; set; } = 0;
         public float TimeInDead { get; set; }
         public float TimeToLife { get; set; }
+        public float TimeToNext { get; set; }
         public GameStatus Status { get; set; } = GameStatus.Start;
         public Board Board { get; set; }
         public Maze Maze { get; set; }
@@ -71,6 +74,7 @@ namespace Pac_Man
                 case GameStatus.Playing:
                 case GameStatus.DeadPlayer:
                 case GameStatus.Ready:
+                case GameStatus.NextLevel:
                     Maze.Draw();
                     Raylib.DrawText("Puntuacion: " + Player.Points.ToString(), 0, 0, 24, Color.White);
                     Player.Draw();
@@ -80,6 +84,8 @@ namespace Pac_Man
                         Raylib.DrawText("Pausa", 300, 400, 40, Color.White);
                     if (Status == GameStatus.Ready)
                         Raylib.DrawText("Listo!", 300, 400, 40, Color.White);
+                    if (Status == GameStatus.NextLevel)
+                        Raylib.DrawText("Nivel Completado", 300, 400, 40, Color.White);
                     break;
                 case GameStatus.GameOver:
                     Raylib.DrawText("Fin del juego", 0, 0, 34, Color.White);
@@ -97,6 +103,7 @@ namespace Pac_Man
             switch (Status) {
                 case GameStatus.Playing:
                     MovementPlayer();
+                    CheckEndLevel();
                     MoveGhost();
                     CheckCollision();
                     break;
@@ -110,6 +117,15 @@ namespace Pac_Man
                     {
                         Status = GameStatus.Playing;
                         TimeToLife = 2f;
+                    }
+                    break;
+                case GameStatus.NextLevel:
+                    if (TimeToNext > 0)
+                        TimeToNext -= DeltaTime;
+                    else
+                    {
+                        NextLevel();
+                        TimeToNext = 2f;
                     }
                     break;
                 case GameStatus.Start:
@@ -126,7 +142,7 @@ namespace Pac_Man
             switch (Status) {
                 case GameStatus.Start:
                     if(Raylib.IsKeyPressed(KeyboardKey.S))
-                        Status = GameStatus.Playing;
+                        Status = GameStatus.Ready;
                     break;
                 case GameStatus.Playing:
                     Player.HandleInput();
@@ -141,6 +157,7 @@ namespace Pac_Man
                     if (Raylib.IsKeyPressed(KeyboardKey.R))
                         ResetGame();
                     break;
+                case GameStatus.NextLevel:
                 case GameStatus.DeadPlayer:
                 case GameStatus.End:
                 default: 
@@ -161,27 +178,26 @@ namespace Pac_Man
         public void MoveGhost()
         {
             var blinky = Ghosts.FirstOrDefault(g => g.Key == 'b');
-            var clyde = Ghosts.FirstOrDefault(g => g.Key == 'c');
             foreach (var g in Ghosts) {
                 switch (g.Key)
                 {
                     case 'b':
-                        g.BaseMove(DeltaTime, Maze, Player.MazeRow, Player.MazeCol);
+                        g.BaseMove(DeltaTime, Maze, Player.MazeRow, Player.MazeCol, Rnd);
                         break;
                     case 'r':
                         var targetPinky = g.GetTarget(Player, 4);
-                        g.BaseMove(DeltaTime, Maze, targetPinky.row, targetPinky.col);
+                        g.BaseMove(DeltaTime, Maze, targetPinky.row, targetPinky.col, Rnd);
                         break;
                     case 'i':
                         var pivote = g.GetTarget(Player, 2);
                         (int row, int col) targetInky = ((2 * pivote.row - blinky.MazeRow), (2 * pivote.col - blinky.MazeCol));
-                        g.BaseMove(DeltaTime, Maze, targetInky.row, targetInky.col);
+                        g.BaseMove(DeltaTime, Maze, targetInky.row, targetInky.col, Rnd);
                         break;
                     case 'c':
-                        int dx = clyde.MazeCol - Player.MazeCol;
-                        int dy = clyde.MazeRow - Player.MazeRow;
-                        (int row, int col) targetClyde = dx * dx + dy * dy > 64 ? (Player.MazeRow, Player.MazeCol) : (clyde.ScatterCorner.Row, clyde.ScatterCorner.Col);
-                        g.BaseMove(DeltaTime, Maze, targetClyde.row, targetClyde.col);
+                        int dx = g.MazeCol - Player.MazeCol;
+                        int dy = g.MazeRow - Player.MazeRow;
+                        (int row, int col) targetClyde = dx * dx + dy * dy > 64 ? (Player.MazeRow, Player.MazeCol) : (g.ScatterCorner.Row, g.ScatterCorner.Col);
+                        g.BaseMove(DeltaTime, Maze, targetClyde.row, targetClyde.col, Rnd);
                         break;
                 }
             }
@@ -211,17 +227,36 @@ namespace Pac_Man
                 }
                 if (g.Status == GhostStatus.scared)
                 {
+                    Player.EatedGhosts++;
+                    var points = 100 * Math.Pow(2, Player.EatedGhosts);
                     g.SetDead();
-                    Player.Points += 100;
+                    Player.Points += (int)points;
                 }
             }
         }
+        public void CheckEndLevel()
+        {
+            if(Maze.TotalPellets <= 0)
+                Status = GameStatus.NextLevel;
+        }
 
+        public void NextLevel()
+        {
+            Player.ResetPosition();
+            Player.Direction = Direction.Left;
+            Player.DesiredDirection = Direction.Left;
+            foreach (var g in Ghosts)
+                g.Reset();
+            Maze.SetCells();
+            TimeInDead = 5f;
+            Status = GameStatus.Ready;
+        }
         public void setScared()
         {
+            Player.EatedGhosts = 0;
             foreach (var g in Ghosts)
             {
-                if(g.OutRoom && g.Status != GhostStatus.dead)
+                if(g.Status != GhostStatus.dead)
                     g.SetScared();
             }
         }
